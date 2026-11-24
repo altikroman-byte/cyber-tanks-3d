@@ -1,0 +1,1845 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Cyber Tanks 3D</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #050509; color: #fff; font-family: 'Segoe UI', Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; user-select: none; overflow: hidden; touch-action: none; }
+  #box { position: relative; width: 960px; height: 680px; border: 2px solid #3a3a55; background: #0b0d16; box-shadow: 0 0 50px rgba(0,255,255,0.14), 0 0 40px rgba(0,0,0,0.95); overflow: hidden; border-radius: 6px; }
+  #box:fullscreen { width: 100vw; height: 100vh; border: none; border-radius: 0; }
+  @media (max-width: 980px), (pointer: coarse) { #box { width: 100vw; height: 100vh; border: none; border-radius: 0; } }
+  #gl-canvas { position: absolute; inset: 0; z-index: 1; cursor: crosshair; }
+  #hud-canvas { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+
+     .screen::before, .screen::after {
+    content: ''; position: absolute; width: 48px; height: 48px; pointer-events: none;
+    border: 3px solid #00ffff; box-shadow: 0 0 12px rgba(0,255,255,0.4);
+  }
+  .screen::before { top: 14px; left: 14px; border-right: none; border-bottom: none; border-radius: 6px 0 0 0; }
+  .screen::after { bottom: 14px; right: 14px; border-left: none; border-top: none; border-radius: 0 0 6px 0; }
+  .cyber-badge {
+    padding: 3px 12px; font-size: 11px; font-weight: bold; letter-spacing: 2px;
+    color: #00ffff; background: rgba(0, 255, 255, 0.08);
+    border: 1px solid rgba(0, 255, 255, 0.45); border-radius: 20px;
+    box-shadow: 0 0 12px rgba(0,255,255,0.2);
+  }
+  .screen {
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(rgba(0, 255, 255, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 255, 255, 0.04) 1px, transparent 1px),
+      radial-gradient(circle at 50% 35%, rgba(24, 32, 58, 0.94) 0%, rgba(6, 7, 14, 0.98) 100%);
+    background-size: 36px 36px, 36px 36px, 100% 100%;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    gap: 8px; text-align: center; z-index: 20; padding: 14px; overflow-y: auto;
+  }
+  h1 { margin: 0; letter-spacing: 2px; font-weight: 900; text-shadow: 0 0 22px rgba(0,255,255,0.6), 0 4px 0 #0a1426; }
+  h2 { margin: 0; letter-spacing: 1.5px; text-shadow: 0 0 14px rgba(0,255,255,0.45); }
+  button {
+    padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer;
+    background: linear-gradient(180deg, #272942 0%, #181a2b 100%);
+    color: #fff; border: 2px solid #4a4e78; border-radius: 9px; min-width: 170px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.12);
+    transition: transform 0.08s, background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  }
+  button:hover {
+    background: linear-gradient(180deg, #34385c 0%, #22253d 100%);
+    border-color: #ffd700; box-shadow: 0 0 14px rgba(255,215,0,0.3);
+  }
+  button:active { transform: scale(0.96); }
+
+  .row { display: flex; gap: 7px; margin-bottom: 2px; flex-wrap: wrap; justify-content: center; }
+  .tab-btn { min-width: 105px; padding: 6px 9px; font-size: 12px; }
+  .active-mode { background: #1d4235; border-color: #00ff88; color: #00ff88; font-weight: bold; box-shadow: 0 0 10px rgba(0,255,136,0.2); }
+  .active-diff { background: #473e1e; border-color: #ffd700; color: #ffd700; font-weight: bold; box-shadow: 0 0 10px rgba(255,215,0,0.2); }
+  .active-shop { background: #1e364f; border-color: #00ffff; color: #00ffff; font-weight: bold; box-shadow: 0 0 10px rgba(0,255,255,0.2); }
+
+  .skins-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 4px 0; max-width: 96%; }
+  .skin-card { background: #191926; border: 2px solid #3a3a52; border-radius: 10px; padding: 8px; width: 185px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .skin-swatch { width: 34px; height: 34px; border-radius: 50%; border: 2px solid #fff; margin: 2px 0; }
+  .skin-card button { min-width: 155px; padding: 5px; font-size: 12px; }
+
+  .tree-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 4px 0; width: 750px; max-width: 96%; }
+  .upg-node { background: #181824; border: 2px solid #404062; border-radius: 10px; padding: 8px 12px; display: flex; flex-direction: column; gap: 3px; text-align: left; }
+  .upg-title { font-size: 13px; font-weight: bold; color: #00ffff; display: flex; justify-content: space-between; }
+  .upg-desc { font-size: 11px; color: #aaa; }
+  .pips { display: flex; gap: 3px; margin: 2px 0; }
+  .pip { flex: 1; height: 5px; background: #2b2b3e; border-radius: 3px; }
+  .pip.filled { background: #00ff88; box-shadow: 0 0 6px #00ff88; }
+  .upg-node button { min-width: 100%; padding: 5px; font-size: 12px; margin-top: 2px; }
+
+  .top-hud-btns { position: absolute; top: 8px; right: 12px; display: flex; gap: 6px; z-index: 6; }
+  .hud-btn { min-width: auto; padding: 4px 10px; font-size: 12px; background: rgba(25,25,40,0.88); }
+
+  .set-box { background: #181824; border: 2px solid #404062; border-radius: 10px; padding: 14px 20px; display: flex; flex-direction: column; gap: 10px; min-width: 340px; max-width: 94%; }
+  .bind-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; width: 100%; }
+  .bind-row { display: flex; justify-content: space-between; align-items: center; background: #12121b; padding: 5px 9px; border-radius: 6px; border: 1px solid #30304a; font-size: 12px; }
+  .bind-btn { min-width: 85px; padding: 4px 7px; font-size: 11px; font-family: monospace; border-color: #00ffff; color: #00ffff; }
+  .bind-btn.listening { background: #4a4223; border-color: #ffd700; color: #ffd700; }
+
+  .console-input { padding: 10px 14px; font-size: 18px; background: #0d0d15; color: #00ff88; border: 2px solid #00ffff; border-radius: 8px; text-align: center; outline: none; width: 220px; font-family: monospace; }
+  .lvl-cards { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 6px; }
+  .lvl-card { background: #181826; border: 2px solid #ffd700; border-radius: 12px; padding: 14px; width: 195px; cursor: pointer; display: flex; flex-direction: column; gap: 6px; align-items: center; transition: transform 0.12s, background 0.15s; }
+  .lvl-card:hover { background: #25253a; border-color: #00ff88; transform: translateY(-3px); }
+
+  .duel-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 720px; width: 95%; margin: 6px 0; }
+  .duel-card { background: #191928; border: 2px solid #ff3366; border-radius: 12px; padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+  .duel-card.locked { border-color: #444; opacity: 0.55; }
+  .duel-card button { min-width: 145px; padding: 6px; font-size: 12px; }
+
+  #touch-ui { position: absolute; inset: 0; pointer-events: none; z-index: 4; display: none; }
+  .joy-zone { position: absolute; bottom: 22px; width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,0.07); border: 2px solid rgba(0,255,255,0.35); pointer-events: auto; touch-action: none; }
+  #joy-left { left: 22px; } #joy-right { right: 22px; border-color: rgba(255,100,100,0.4); }
+  .joy-knob { position: absolute; top: 36px; left: 36px; width: 44px; height: 44px; border-radius: 50%; background: rgba(0,255,255,0.55); border: 2px solid #fff; pointer-events: none; }
+  #joy-right .joy-knob { background: rgba(255,80,80,0.6); }
+  .touch-act-btn { position: absolute; width: 60px; height: 60px; border-radius: 50%; pointer-events: auto; font-weight: bold; font-size: 11px; display: flex; justify-content: center; align-items: center; touch-action: none; }
+  #tbtn-dash { right: 155px; bottom: 25px; background: rgba(0,200,255,0.28); border: 2px solid #00ffff; color: #fff; }
+  #tbtn-ult { right: 145px; bottom: 98px; background: rgba(255,120,0,0.32); border: 2px solid #ff8800; color: #fff; }
+</style>
+</head>
+<body>
+<div id="box">
+  <canvas id="gl-canvas" width="960" height="680"></canvas>
+  <canvas id="hud-canvas" width="960" height="680"></canvas>
+
+  <div id="touch-ui">
+    <div id="joy-left" class="joy-zone"><div id="knob-left" class="joy-knob"></div></div>
+    <div id="joy-right" class="joy-zone"><div id="knob-right" class="joy-knob"></div></div>
+    <div id="tbtn-dash" class="touch-act-btn">РЫВОК</div>
+    <div id="tbtn-ult" class="touch-act-btn">УЛЬТА</div>
+  </div>
+
+  <div class="top-hud-btns">
+    <button id="pause-hud-btn" class="hud-btn" style="display:none;" onclick="this.blur(); togglePause();">Пауза</button>
+    <button id="fs-hud-btn" class="hud-btn" onclick="this.blur(); toggleFullScreen();">[ ] Экран</button>
+  </div>
+
+   <div id="m-menu" class="screen">
+    <div class="cyber-badge">◈ ARMORED WEBGL ENGINE • 32×32 HD ◈</div>
+    <h1 style="color:#00ffff; font-size:36px;">CYBER TANKS <span style="color:#ffd700;">3D</span></h1>
+    <div style="color:#00ff88; font-size:17px;">Банк: <b id="bank-val">0</b> очков</div>
+    <div id="controls-hint" style="font-size:11px; color:#aaa;"></div>
+    <div style="font-size:12px; color:#888;">Режим игры (WebGL 3D):</div>
+    <div class="row">
+      <button id="mode-classic" class="tab-btn active-mode" onclick="setMode('classic')">Классика (2:30)</button>
+      <button id="mode-raid" class="tab-btn" onclick="setMode('raid')">Прорыв (Финиш)</button>
+      <button id="mode-boss" class="tab-btn" onclick="setMode('boss')">Босс-Раш (x1.5)</button>
+      <button id="mode-rush" class="tab-btn" onclick="setMode('rush')">Золотая лихорадка</button>
+      <button id="mode-surv" class="tab-btn" onclick="setMode('surv')">Выживание (30:00)</button>
+      <button id="mode-duel" class="tab-btn" style="border-color:#ff3366;" onclick="openBossDuelMenu()">Битва с боссом</button>
+      <button id="mode-coop" class="tab-btn" style="border-color:#00e5ff;" onclick="setMode('coop')">С другом (5:00)</button>
+    </div>
+    <div style="font-size:12px; color:#888;">Сложность:</div>
+    <div class="row">
+      <button id="d-easy" class="tab-btn" onclick="setDiff('easy')">Лёгкая</button>
+      <button id="d-norm" class="tab-btn active-diff" onclick="setDiff('norm')">Нормальная</button>
+      <button id="d-hard" class="tab-btn" onclick="setDiff('hard')">Хардкор (+Снайперы)</button>
+    </div>
+    <button onclick="this.blur(); startGame();" style="margin-top:4px; font-weight:bold; border-color:#ffd700; font-size:16px; padding:9px 28px;">ИГРАТЬ В 3D</button>
+    <div class="row">
+      <button style="min-width:185px; border-color:#00ffff;" onclick="showTree(1)">Дерево прокачки</button>
+      <button style="min-width:185px; border-color:#ff66cc;" onclick="showShop('ship')">Ангар и Суперудары</button>
+    </div>
+    <div class="row">
+      <button style="min-width:120px; border-color:#ffd700;" onclick="showAch()">Достижения</button>
+      <button style="min-width:120px;" onclick="showSet('menu', 'general')">Настройки</button>
+      <button style="min-width:120px; border-color:#00ff88;" onclick="this.blur(); toggleFullScreen();">Во весь экран</button>
+      <button style="min-width:120px; border-color:#aa66ff;" onclick="showConsole()">Консоль</button>
+    </div>
+  </div>
+
+  <div id="m-ach" class="screen" style="display:none;">
+    <h2 style="color:#ffd700;">ДОСТИЖЕНИЯ И НАГРАДЫ</h2>
+    <div style="color:#00ff88; font-size:14px;">Выполняй задания и забирай награды в банк!</div>
+    <div id="ach-list" class="tree-grid" style="max-height:430px; overflow-y:auto; padding-right:4px;"></div>
+    <button style="border-color:#00ff88; margin-top:4px;" onclick="showMenu()">В главное меню</button>
+  </div>
+
+  <div id="m-duel" class="screen" style="display:none;">
+    <h2 style="color:#ff3366; font-size:25px;">БИТВА С 3D-БОССОМ</h2>
+    <div style="color:#ccc; font-size:12px;">Побеждай боссов по порядку и собирай Кубки!</div>
+    <div id="duel-list" class="duel-grid"></div>
+    <button style="border-color:#00ff88; margin-top:4px;" onclick="showMenu()">В главное меню</button>
+  </div>
+
+  <div id="m-lvlup" class="screen" style="display:none;">
+    <h2 style="color:#ffd700; font-size:26px;">НОВЫЙ УРОВЕНЬ <span id="lvlup-num">2</span>!</h2>
+    <div style="color:#ccc; font-size:13px;">Выберите 1 из 3 усилений на этот бой:</div>
+    <div id="lvlup-cards" class="lvl-cards"></div>
+  </div>
+
+  <div id="m-console" class="screen" style="display:none;">
+    <h2 style="color:#aa66ff;">СЕКРЕТНАЯ КОНСОЛЬ</h2>
+    <input id="console-code" class="console-input" type="text" maxlength="12" placeholder="Код..." onkeydown="if(event.key==='Enter') runConsole();">
+    <div id="console-msg" style="height:18px; font-size:13px; font-weight:bold;"></div>
+    <div class="row">
+      <button style="border-color:#00ff88;" onclick="runConsole()">Ввести</button>
+      <button onclick="showMenu()">В главное меню</button>
+    </div>
+  </div>
+
+  <div id="m-pause" class="screen" style="display:none;">
+    <h1 style="color:#00ffff;">ПАУЗА</h1>
+    <button style="border-color:#00ff88;" onclick="togglePause()">Продолжить игру</button>
+    <button onclick="showSet('pause', 'general')">Настройки</button>
+    <button style="border-color:#ff5555;" onclick="quitToMenu()">Выйти в главное меню</button>
+  </div>
+
+  <div id="m-tree" class="screen" style="display:none;">
+    <h2 style="color:#00ffff;">ДЕРЕВО ПРОКАЧКИ 3D-ТАНКА</h2>
+    <div style="color:#00ff88; font-size:14px;">Доступно в банке: <b id="tree-bank">0</b> очков</div>
+    <div class="row">
+      <button id="tpage-1" class="tab-btn active-shop" onclick="showTree(1)">Страница 1: Оружие, Рикошет и Дроны</button>
+      <button id="tpage-2" class="tab-btn" onclick="showTree(2)">Страница 2: Магнит, Броня (1500 HP), Нитро</button>
+    </div>
+    <div id="tree-list" class="tree-grid"></div>
+    <button style="border-color:#00ff88; margin-top:4px;" onclick="showMenu()">В главное меню</button>
+  </div>
+
+  <div id="m-shop" class="screen" style="display:none;">
+    <h2 style="color:#ff66cc;">3D-АНГАР И СУПЕРСПОСОБНОСТИ</h2>
+    <div style="color:#00ff88; font-size:14px;">Баланс: <b id="shop-bank">0</b> очков</div>
+    <div class="row">
+      <button id="tab-ship" class="tab-btn active-shop" onclick="showShop('ship')">Корпуса</button>
+      <button id="tab-aura" class="tab-btn" onclick="showShop('aura')">Свечение</button>
+      <button id="tab-trail" class="tab-btn" onclick="showShop('trail')">След</button>
+      <button id="tab-ult" class="tab-btn" onclick="showShop('ult')">Суперудары</button>
+    </div>
+    <div id="shop-hint" style="font-size:11px; color:#ffd700; height:14px;"></div>
+    <div id="skins-list" class="skins-grid"></div>
+    <button style="border-color:#00ff88; margin-top:4px;" onclick="showMenu()">В главное меню</button>
+  </div>
+
+  <div id="m-set" class="screen" style="display:none;">
+    <h2 style="color:#00ffff;">НАСТРОЙКИ 3D</h2>
+    <div class="row">
+      <button id="stab-general" class="tab-btn active-shop" onclick="switchSetTab('general')">Звук, Камера и Телефон</button>
+      <button id="stab-controls" class="tab-btn" onclick="switchSetTab('controls')">Клавиатура (ПК)</button>
+    </div>
+    <div id="set-general" class="set-box">
+      <label style="font-size:14px; display:flex; justify-content:space-between; align-items:center;">
+        <span>Громкость: <b id="vol-label">50%</b></span>
+        <input type="range" id="vol" min="0" max="1" step="0.05" value="0.5" oninput="changeVol(this.value)">
+      </label>
+      <label style="font-size:14px; display:flex; justify-content:space-between; align-items:center;">
+        <span>Зум камеры: <b id="zoom-label">85%</b></span>
+        <input type="range" id="zoom" min="0.55" max="1.35" step="0.05" value="0.85" oninput="changeZoom(this.value)">
+      </label>
+      <label style="font-size:14px; display:flex; justify-content:space-between; align-items:center;">
+        <span>Чувствительность башни: <b id="sens-label">100%</b></span>
+        <input type="range" id="sens" min="0.1" max="1.0" step="0.05" value="0.35" oninput="changeSens(this.value)">
+      </label>
+      <label style="font-size:14px; display:flex; justify-content:space-between; align-items:center;">
+        <span>Сенсорные стики (Android):</span>
+        <button id="touch-toggle-btn" style="min-width:120px; padding:4px 10px;" onclick="toggleTouchMode()">Авто</button>
+      </label>
+    </div>
+    <div id="set-controls" class="set-box" style="display:none;">
+      <div id="bind-status" style="font-size:11px; color:#ffd700; height:15px;">Нажмите на клавишу справа, чтобы переназначить</div>
+      <div id="bind-list" class="bind-grid"></div>
+      <button style="min-width:100%; padding:5px; font-size:12px; border-color:#ff6666;" onclick="resetBinds()">Сбросить по умолчанию</button>
+    </div>
+    <div class="row">
+      <button id="set-back-btn" style="min-width:140px;" onclick="closeSet()">Назад</button>
+      <button id="set-menu-btn" style="min-width:140px; border-color:#00ff88;" onclick="quitToMenu()">В главное меню</button>
+    </div>
+  </div>
+
+  <div id="m-end" class="screen" style="display:none;"></div>
+</div>
+
+<script>
+var glCanvas = document.getElementById('gl-canvas'), gl = glCanvas.getContext('webgl', { antialias: true });
+var hudCanvas = document.getElementById('hud-canvas'), ctx = hudCanvas.getContext('2d'), box = document.getElementById('box');
+var VW = 960, VH = 680, MW = 3500, MH = 3000;
+var state = 'menu', setReturnTo = 'menu', score = 0, time = 150, level = 1;
+var gameMode = 'classic', diff = 'norm', shopTab = 'ship', treePage = 1, vol = 0.5;
+var actx = null, gain = null, mTimer = null;
+
+// === НАСТОЯЩИЙ АППАРАТНЫЙ WEBGL 3D-ДВИЖОК С Z-БУФЕРОМ И ОСВЕЩЕНИЕМ ===
+var vsSrc = 'attribute vec3 aPos; attribute vec3 aNorm; attribute vec2 aUV; uniform mat4 uMVP; uniform mat4 uModel; varying vec3 vNorm; varying vec2 vUV; void main(){ gl_Position = uMVP * vec4(aPos, 1.0); vNorm = mat3(uModel) * aNorm; vUV = aUV; }';
+var fsSrc = 'precision mediump float; varying vec3 vNorm; varying vec2 vUV; uniform vec3 uColor; uniform float uUnlit; uniform float uAlpha; uniform sampler2D uTex; uniform float uTexScale; void main(){ vec3 texCol = texture2D(uTex, vUV * uTexScale).rgb; vec3 base = uColor * texCol; if(uUnlit > 0.5){ gl_FragColor = vec4(base, uAlpha); return; } vec3 n = normalize(vNorm); vec3 lDir = normalize(vec3(0.45, 0.85, 0.55)); float diff = max(dot(n, lDir), 0.0); float light = 0.48 + diff * 0.52; gl_FragColor = vec4(base * light, uAlpha); }';
+
+function compileShader(type, src) {
+  var s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s;
+}
+var prog = gl.createProgram();
+gl.attachShader(prog, compileShader(gl.VERTEX_SHADER, vsSrc));
+gl.attachShader(prog, compileShader(gl.FRAGMENT_SHADER, fsSrc));
+gl.linkProgram(prog); gl.useProgram(prog);
+
+var aPosLoc = gl.getAttribLocation(prog, 'aPos'), aNormLoc = gl.getAttribLocation(prog, 'aNorm'), aUVLoc = gl.getAttribLocation(prog, 'aUV');
+var uMVPLoc = gl.getUniformLocation(prog, 'uMVP'), uModelLoc = gl.getUniformLocation(prog, 'uModel');
+var uColorLoc = gl.getUniformLocation(prog, 'uColor'), uUnlitLoc = gl.getUniformLocation(prog, 'uUnlit'), uAlphaLoc = gl.getUniformLocation(prog, 'uAlpha');
+var uTexLoc = gl.getUniformLocation(prog, 'uTex'), uTexScaleLoc = gl.getUniformLocation(prog, 'uTexScale');
+
+function createTex32(drawFn) {
+  var c = document.createElement('canvas'); c.width = 32; c.height = 32;
+  var cx = c.getContext('2d'); drawFn(cx);
+  var tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, c);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+  gl.generateMipmap(gl.TEXTURE_2D);
+  return tex;
+}
+
+var texFlat = createTex32(function(cx) { cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, 32, 32); });
+var texArmor = createTex32(function(cx) {
+  cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, 32, 32);
+  cx.strokeStyle = '#cfd8e6'; cx.lineWidth = 2; cx.strokeRect(1, 1, 30, 30);
+  cx.fillStyle = '#dfe6f2'; cx.fillRect(3, 15, 26, 2);
+  cx.fillStyle = '#b8c4d9';
+  cx.fillRect(3, 3, 2, 2); cx.fillRect(27, 3, 2, 2);
+  cx.fillRect(3, 27, 2, 2); cx.fillRect(27, 27, 2, 2);
+});
+var texTrack = createTex32(function(cx) {
+  cx.fillStyle = '#8892a4'; cx.fillRect(0, 0, 32, 32);
+  cx.fillStyle = '#dce3f0';
+  for (var x = 0; x < 32; x += 8) cx.fillRect(x + 1, 2, 4, 28);
+});
+var texFloor = createTex32(function(cx) {
+  cx.fillStyle = '#d4dae6'; cx.fillRect(0, 0, 32, 32);
+  cx.strokeStyle = '#ffffff'; cx.lineWidth = 1; cx.strokeRect(0.5, 0.5, 31, 31);
+  cx.fillStyle = '#bcc5d6'; cx.fillRect(4, 4, 10, 10); cx.fillRect(18, 18, 10, 10);
+});
+var texWall = createTex32(function(cx) {
+  cx.fillStyle = '#d0d7e3'; cx.fillRect(0, 0, 32, 32);
+  cx.fillStyle = '#9aa4b8'; cx.fillRect(0, 14, 32, 3); cx.fillRect(15, 0, 3, 14); cx.fillRect(7, 17, 3, 15);
+  cx.strokeStyle = '#ffffff'; cx.strokeRect(1, 1, 30, 30);
+});
+
+gl.enable(gl.DEPTH_TEST);
+gl.disable(gl.CULL_FACE);
+gl.enable(gl.BLEND);
+gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+// 3D-математика матриц
+function mat4Identity() { return new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]); }
+function mat4Mul(a, b) {
+  var out = new Float32Array(16);
+  for (var i = 0; i < 4; i++) {
+    for (var j = 0; j < 4; j++) {
+      out[j * 4 + i] = a[i] * b[j * 4] + a[4 + i] * b[j * 4 + 1] + a[8 + i] * b[j * 4 + 2] + a[12 + i] * b[j * 4 + 3];
+    }
+  }
+  return out;
+}
+function mat4Perspective(fovRad, aspect, near, far) {
+  var f = 1.0 / Math.tan(fovRad * 0.5), nf = 1 / (near - far);
+  return new Float32Array([f / aspect, 0, 0, 0, 0, f, 0, 0, 0, 0, (far + near) * nf, -1, 0, 0, 2 * far * near * nf, 0]);
+}
+function mat4LookAt(ex, ey, ez, tx, ty, tz) {
+  var zx = ex - tx, zy = ey - ty, zz = ez - tz, zl = Math.hypot(zx, zy, zz) || 1; zx /= zl; zy /= zl; zz /= zl;
+  var xx = zz, xy = 0, xz = -zx, xl = Math.hypot(xx, xy, xz) || 1; xx /= xl; xz /= xl;
+  var yx = zy * xz - zz * xy, yy = zz * xx - zx * xz, yz = zx * xy - zy * xx;
+  return new Float32Array([xx, yx, zx, 0, xy, yy, zy, 0, xz, yz, zz, 0, -(xx * ex + xy * ey + xz * ez), -(yx * ex + yy * ey + yz * ez), -(zx * ex + zy * ey + zz * ez), 1]);
+}
+function mat4TRS(x, y, z, rotY, sx, sy, sz) {
+  var c = Math.cos(rotY), s = Math.sin(rotY);
+  return new Float32Array([c * sx, 0, -s * sx, 0, 0, sy, 0, 0, s * sz, 0, c * sz, 0, x, y, z, 1]);
+}
+
+// Геометрия 3D-куба и 3D-призмы в видеопамяти GPU
+function createMeshBuffers(verts, norms, uvs) {
+  var vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
+  var nb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, nb); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(norms), gl.STATIC_DRAW);
+  var uvb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, uvb); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uvs), gl.STATIC_DRAW);
+  return { vb: vb, nb: nb, uvb: uvb, count: verts.length / 3 };
+}
+
+
+var boxGeo = (function() {
+  var v = [
+    -0.5,-0.5, 0.5,  0.5,-0.5, 0.5,  0.5, 0.5, 0.5, -0.5,-0.5, 0.5,  0.5, 0.5, 0.5, -0.5, 0.5, 0.5,
+     0.5,-0.5,-0.5, -0.5,-0.5,-0.5, -0.5, 0.5,-0.5,  0.5,-0.5,-0.5, -0.5, 0.5,-0.5,  0.5, 0.5,-0.5,
+    -0.5, 0.5, 0.5,  0.5, 0.5, 0.5,  0.5, 0.5,-0.5, -0.5, 0.5, 0.5,  0.5, 0.5,-0.5, -0.5, 0.5,-0.5,
+    -0.5,-0.5,-0.5,  0.5,-0.5,-0.5,  0.5,-0.5, 0.5, -0.5,-0.5,-0.5,  0.5,-0.5, 0.5, -0.5,-0.5, 0.5,
+     0.5,-0.5, 0.5,  0.5,-0.5,-0.5,  0.5, 0.5,-0.5,  0.5,-0.5, 0.5,  0.5, 0.5,-0.5,  0.5, 0.5, 0.5,
+-0.5,-0.5,-0.5, -0.5,-0.5, 0.5, -0.5, 0.5, 0.5, -0.5,-0.5,-0.5, -0.5, 0.5, 0.5, -0.5, 0.5,-0.5
+];
+var n = [
+0,0,1, 0,0,1, 0,0,1, 0,0,1, 0,0,1, 0,0,1,
+0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1,
+0,1,0, 0,1,0, 0,1,0, 0,1,0, 0,1,0, 0,1,0,
+0,-1,0, 0,-1,0, 0,-1,0, 0,-1,0, 0,-1,0, 0,-1,0,
+1,0,0, 1,0,0, 1,0,0, 1,0,0, 1,0,0, 1,0,0,
+-1,0,0, -1,0,0, -1,0,0, -1,0,0, -1,0,0, -1,0,0
+];
+  var u = [];
+  for (var f = 0; f < 6; f++) u.push(0,1, 1,1, 1,0, 0,1, 1,0, 0,0);
+  return createMeshBuffers(v, n, u);
+})();
+
+function makePrismGeo(sides) {
+  var v = [], n = [], u = [];
+  for (var i = 0; i < sides; i++) {
+    var a1 = (Math.PI * 2 / sides) * i, a2 = (Math.PI * 2 / sides) * (i + 1);
+    var x1 = Math.cos(a1) * 0.5, z1 = Math.sin(a1) * 0.5, x2 = Math.cos(a2) * 0.5, z2 = Math.sin(a2) * 0.5;
+    v.push(0, 0.5, 0, x2, 0.5, z2, x1, 0.5, z1); n.push(0,1,0, 0,1,0, 0,1,0); u.push(0.5,0.5, x2+0.5,z2+0.5, x1+0.5,z1+0.5);
+    var nx = Math.cos((a1 + a2) * 0.5), nz = Math.sin((a1 + a2) * 0.5);
+    v.push(x1,-0.5,z1, x2,-0.5,z2, x2,0.5,z2, x1,-0.5,z1, x2,0.5,z2, x1,0.5,z1);
+    n.push(nx,0,nz, nx,0,nz, nx,0,nz, nx,0,nz, nx,0,nz, nx,0,nz);
+    u.push(0,1, 1,1, 1,0, 0,1, 1,0, 0,0);
+  }
+  return createMeshBuffers(v, n, u);
+}
+var prismGeos = { 4: makePrismGeo(4), 5: makePrismGeo(5), 6: makePrismGeo(6), 7: makePrismGeo(7), 8: makePrismGeo(8), 16: makePrismGeo(16) };
+var vpMat = mat4Identity(), viewMat = mat4Identity(), projMat = mat4Identity();
+function hexToRGB(hex) {
+if (!hex || hex.charAt(0) !== '#') return [0.8, 0.8, 0.8];
+var num = parseInt(hex.slice(1), 16);
+return [((num >> 16) & 255) / 255, ((num >> 8) & 255) / 255, (num & 255) / 255];
+}
+function drawMesh3D(geo, x, y, z, rotY, sx, sy, sz, rgb, unlit, alpha, tex, texScale) {
+  var model = mat4TRS(x, y, z, rotY, sx, sy, sz);
+  var mvp = mat4Mul(vpMat, model);
+  gl.uniformMatrix4fv(uMVPLoc, false, mvp);
+  gl.uniformMatrix4fv(uModelLoc, false, model);
+  gl.uniform3fv(uColorLoc, rgb);
+  gl.uniform1f(uUnlitLoc, unlit ? 1.0 : 0.0);
+  gl.uniform1f(uAlphaLoc, alpha !== undefined ? alpha : 1.0);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, tex || texFlat);
+  gl.uniform1i(uTexLoc, 0);
+  gl.uniform1f(uTexScaleLoc, texScale || 1.0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, geo.vb); gl.vertexAttribPointer(aPosLoc, 3, gl.FLOAT, false, 0, 0); gl.enableVertexAttribArray(aPosLoc);
+  gl.bindBuffer(gl.ARRAY_BUFFER, geo.nb); gl.vertexAttribPointer(aNormLoc, 3, gl.FLOAT, false, 0, 0); gl.enableVertexAttribArray(aNormLoc);
+  gl.bindBuffer(gl.ARRAY_BUFFER, geo.uvb); gl.vertexAttribPointer(aUVLoc, 2, gl.FLOAT, false, 0, 0); gl.enableVertexAttribArray(aUVLoc);
+  gl.drawArrays(gl.TRIANGLES, 0, geo.count);
+}
+var camPos = { x: 1750, y: 580, z: 1920 }, camTarget = { x: 1750, y: 0, z: 1500 };
+function screenToGround3D(sx, sy) {
+var nx = (sx / VW) * 2 - 1, ny = 1 - (sy / VH) * 2;
+var fovRad = 44 * Math.PI / 180, tanF = Math.tan(fovRad * 0.5), aspect = VW / VH;
+// Вектор взгляда камеры
+var fx = camTarget.x - camPos.x, fy = camTarget.y - camPos.y, fz = camTarget.z - camPos.z;
+var fl = Math.hypot(fx, fy, fz) || 1; fx /= fl; fy /= fl; fz /= fl;
+var rx = -fz, ry = 0, rz = fx, rl = Math.hypot(rx, rz) || 1; rx /= rl; rz /= rl;
+var ux = ry * fz - rz * fy, uy = rz * fx - rx * fz, uz = rx * fy - ry * fx;
+var dx = fx + rx * nx * tanF * aspect + ux * ny * tanF;
+var dy = fy + ry * nx * tanF * aspect + uy * ny * tanF;
+var dz = fz + rz * nx * tanF * aspect + uz * ny * tanF;
+if (Math.abs(dy) < 0.001) return { x: camTarget.x, y: camTarget.z };
+var t = (14 - camPos.y) / dy;
+return { x: camPos.x + dx * t, y: camPos.z + dz * t };
+}
+function project3DToScreen(wx, wy, wz) {
+  var x = vpMat[0] * wx + vpMat[4] * wy + vpMat[8] * wz + vpMat[12];
+  var y = vpMat[1] * wx + vpMat[5] * wy + vpMat[9] * wz + vpMat[13];
+  var w = vpMat[3] * wx + vpMat[7] * wy + vpMat[11] * wz + vpMat[15];
+  if (w <= 0.1) return null;
+  return { x: (x / w + 1) * 0.5 * VW, y: (1 - y / w) * 0.5 * VH };
+}
+function resizeCanvas() {
+var rect = box.getBoundingClientRect();
+VW = Math.max(320, Math.round(rect.width)); VH = Math.max(320, Math.round(rect.height));
+glCanvas.width = VW; glCanvas.height = VH; glCanvas.style.width = rect.width + 'px'; glCanvas.style.height = rect.height + 'px';
+hudCanvas.width = VW; hudCanvas.height = VH; hudCanvas.style.width = rect.width + 'px'; hudCanvas.style.height = rect.height + 'px';
+gl.viewport(0, 0, VW, VH);
+}
+window.addEventListener('resize', resizeCanvas);
+document.addEventListener('fullscreenchange', resizeCanvas);
+resizeCanvas();
+var sensEl = document.getElementById('sens'); if (sensEl) sensEl.value = mouseSens;
+var sensLbl = document.getElementById('sens-label'); if (sensLbl) sensLbl.innerText = Math.round((mouseSens / 0.35) * 100) + '%';
+var zoomEl = document.getElementById('zoom'); if (zoomEl) zoomEl.value = camZoom;
+var zoomLbl = document.getElementById('zoom-label'); if (zoomLbl) zoomLbl.innerText = Math.round(camZoom * 100) + '%';
+
+function readStorage(key, defVal) {
+  try { var v = localStorage.getItem(key); if (v !== null && v !== undefined && v !== 'undefined') return v; } catch (e) {}
+  try { if (window.name && window.name.indexOf('CT3D:') === 0) { var obj = JSON.parse(window.name.slice(5)); if (obj && obj[key] !== undefined) return obj[key]; } } catch (e) {}
+  return defVal;
+}
+var memBackup = {};
+function writeStorage(key, val) {
+  var str = String(val); memBackup[key] = str;
+  try { localStorage.setItem(key, str); } catch (e) {}
+  try { window.name = 'CT3D:' + JSON.stringify(memBackup); } catch (e) {}
+}
+
+var camZoom = parseFloat(readStorage('mg3_zoom', '0.85')) || 0.85;
+var mouseSens = parseFloat(readStorage('mg3_sens', '0.35')) || 0.35;
+var touchSetting = readStorage('mg3_touch', 'auto');
+var defaultBinds = { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', dash: 'Space', ult: 'KeyE', pause: 'Escape', fullscreen: 'KeyF' };
+var keyBinds = JSON.parse(readStorage('mg3_binds', 'null')) || Object.assign({}, defaultBinds);
+for (var bk in defaultBinds) { if (!keyBinds[bk]) keyBinds[bk] = defaultBinds[bk]; }
+var listeningAction = null;
+
+var bindLabels = Array.of(
+  { id: 'up', name: 'Езда вверх' }, { id: 'down', name: 'Езда вниз' },
+  { id: 'left', name: 'Езда влево' }, { id: 'right', name: 'Езда вправо' },
+  { id: 'dash', name: 'Нитро-рывок' }, { id: 'ult', name: 'Суперудар (ПКМ)' },
+  { id: 'pause', name: 'Пауза' }, { id: 'fullscreen', name: 'Полный экран' }
+);
+
+function formatKeyName(code) {
+  if (!code) return '---';
+  if (code === 'Space') return 'ПРОБЕЛ';
+  if (code === 'Escape') return 'ESC';
+  if (code.startsWith('Key')) return code.slice(3);
+  if (code.startsWith('Digit')) return code.slice(5);
+  if (code.startsWith('Arrow')) return code.replace('Arrow', 'Стрелка ');
+  return code;
+}
+function updateControlsHint() {
+  var el = document.getElementById('controls-hint');
+  if (el) el.innerHTML = '<b>' + formatKeyName(keyBinds.up) + formatKeyName(keyBinds.left) + formatKeyName(keyBinds.down) + formatKeyName(keyBinds.right) + '</b> — езда | <b>ЛКМ</b> — огонь | <b>ПКМ/' + formatKeyName(keyBinds.ult) + '</b> — Ульта | <b>' + formatKeyName(keyBinds.dash) + '</b> — рывок';
+}
+function isTouchActive() {
+  if (touchSetting === 'on') return true;
+  if (touchSetting === 'off') return false;
+  return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+}
+function updateTouchUI() {
+  var tUi = document.getElementById('touch-ui'), btn = document.getElementById('touch-toggle-btn');
+  if (btn) btn.innerText = touchSetting === 'auto' ? 'Авто' : (touchSetting === 'on' ? 'Включено' : 'Выключено');
+  if (tUi) tUi.style.display = (isTouchActive() && state === 'play') ? 'block' : 'none';
+}
+function toggleTouchMode() {
+  touchSetting = touchSetting === 'auto' ? 'on' : (touchSetting === 'on' ? 'off' : 'auto');
+  writeStorage('mg3_touch', touchSetting); updateTouchUI();
+}
+function toggleFullScreen() {
+  if (document.activeElement) document.activeElement.blur();
+  if (!document.fullscreenElement) { if (box.requestFullscreen) box.requestFullscreen(); }
+  else if (document.exitFullscreen) document.exitFullscreen();
+}
+function togglePause() {
+  if (document.activeElement) document.activeElement.blur();
+  var mp = document.getElementById('m-pause'), ms = document.getElementById('m-set');
+  if (state === 'play') { state = 'paused'; mouse.down = false; updateTouchUI(); if (mp) mp.style.display = 'flex'; }
+  else if (state === 'paused') { state = 'play'; updateTouchUI(); if (mp) mp.style.display = 'none'; if (ms) ms.style.display = 'none'; }
+}
+function quitToMenu() {
+  if (document.activeElement) document.activeElement.blur();
+  clearInterval(mTimer); mouse.down = false; keys = {}; showMenu();
+}
+
+var bank = parseInt(readStorage('mg3_bank', '0')) || 0;
+var duelUnlocked = parseInt(readStorage('mg3_duel_lvl', '1')) || 1;
+var duelTrophies = parseInt(readStorage('mg3_trophies', '0')) || 0;
+var gStats = JSON.parse(readStorage('mg3_stats', '{"kills":0,"bosses":0,"raids":0,"coops":0,"maxLvl":1}'));
+var claimedAch = JSON.parse(readStorage('mg3_ach', '[]'));
+var ownedShips = JSON.parse(readStorage('mg3_ships', '["scout"]'));
+var ownedAuras = JSON.parse(readStorage('mg3_auras', '["none"]'));
+var ownedTrails = JSON.parse(readStorage('mg3_trails', '["ion"]'));
+var ownedUlts = JSON.parse(readStorage('mg3_ults', '["fireball"]'));
+var curShip = readStorage('mg3_cur_ship', 'scout');
+var curAura = readStorage('mg3_cur_aura', 'none');
+var curTrail = readStorage('mg3_cur_trail', 'ion');
+var curUlt = readStorage('mg3_cur_ult', 'fireball');
+var upg = JSON.parse(readStorage('mg3_upg', '{"speed":0,"dashPow":0,"dashCd":0,"shield":0,"dashShield":0,"damage":0,"fireball":0,"autoFire":0,"drone":0,"maxHp":0,"magnet":0,"ricochet":0}'));
+['damage','fireball','autoFire','drone','maxHp','magnet','ricochet','dashShield'].forEach(function(k) { if (typeof upg[k] !== 'number') upg[k] = 0; });
+
+var upgMeta = Array.of(
+  { page: 1, key: 'damage', name: 'Пушка танка', desc: 'Урон и двойной рельсотрон на макс. ур. (до 11 ур.)', max: 10, prices: Array.of(100, 250, 500, 1000, 1800, 3000, 4800, 7200, 10500, 15000) },
+  { page: 1, key: 'ricochet', name: 'Рикошет снарядов', desc: '1: отскок | 2: делится на 2 | 3: на 3 пули', max: 3, prices: Array.of(350, 850, 1800) },
+  { page: 1, key: 'autoFire', name: 'Авто-турель', desc: 'Самонаведение, но урон -50%', max: 1, prices: Array.of(300) },
+  { page: 1, key: 'drone', name: 'Боевые Дроны (макс 3)', desc: 'До 3 летающих 3D-дронов вокруг танка', max: 3, prices: Array.of(250, 750, 1900) },
+  { page: 1, key: 'fireball', name: 'Мощь Суперударов', desc: '+10 HP к урону ульты за уровень', max: 5, prices: Array.of(150, 350, 700, 1200, 2200) },
+  { page: 2, key: 'magnet', name: 'Магнит монет', desc: 'От ближнего до 2 метров на 5 ур.', max: 5, prices: Array.of(80, 180, 350, 600, 1000) },
+  { page: 2, key: 'maxHp', name: 'Броня (до 1500 HP)', desc: '+100 HP и усиление 3D-брони корпуса', max: 14, progPrice: 120 },
+  { page: 2, key: 'speed', name: 'Мотор и гусеницы', desc: 'Скорость движения танка (до 8 ур.)', max: 8, prices: Array.of(40, 100, 200, 350, 600, 1000, 1600, 2500) },
+  { page: 2, key: 'dashPow', name: 'Нитро-рывок', desc: 'Дальность и скорость рывка', max: 5, prices: Array.of(50, 120, 240, 400, 700) },
+  { page: 2, key: 'dashCd', name: 'Охлаждение нитро', desc: 'Перезарядка рывка (10с -> 2.0с)', max: 6, prices: Array.of(60, 140, 280, 450, 750, 10000) },
+  { page: 2, key: 'dashShield', name: 'Щит при рывке', desc: 'Даёт 3D-щит на 2 сек при каждом рывке', max: 1, prices: Array.of(5000) },
+  { page: 2, key: 'shield', name: 'Энергощит', desc: 'Длительность зелёного щита', max: 5, prices: Array.of(45, 110, 220, 380, 650) }
+);
+function getUpgPrice(m, l) { return m.progPrice ? m.progPrice * (l + 1) : (m.prices ? m.prices[Math.min(l, m.prices.length - 1)] : 100); }
+
+var shipsCatalog = Array.of(
+  { id: 'scout', name: 'Т-1 Разведчик', desc: 'Стальная броня', c1: '#d8e0e8', c2: '#556677', core: '#00ccff', price: 0 },
+  { id: 'viper', name: 'Гадюка', desc: 'Карбон и неон', c1: '#232632', c2: '#00ff88', core: '#00ff88', price: 120 },
+  { id: 'gold', name: 'Золотой Мамонт', desc: 'Золотая броня', c1: '#ffd700', c2: '#996600', core: '#ff2244', price: 280 },
+  { id: 'cyber', name: 'Кибер-Оса', desc: 'Неоновый корпус', c1: '#ff33aa', c2: '#441144', core: '#00ffff', price: 500 },
+  { id: 'phoenix', name: 'Вулкан', desc: 'Огненный корпус', c1: '#ff5500', c2: '#ffcc00', core: '#ffffff', price: 850 },
+  { id: 'specter', name: 'Спектр X', desc: 'Квантовый танк', c1: 'rainbow', c2: '#ffffff', core: '#00ffff', price: 1400 }
+);
+var aurasCatalog = Array.of(
+  { id: 'none', name: 'Без свечения', bonusText: 'Без бонуса', color: 'transparent', price: 0 },
+  { id: 'wind', name: '1. Лазурный вихрь', bonusText: '+12% скорость', color: '#00ccff', price: 150 },
+  { id: 'magnet', name: '2. Золотое сияние', bonusText: '+50% магнит монет', color: '#ffd700', price: 300 },
+  { id: 'chrono', name: '3. Хроно-матрица', bonusText: '-15% КД рывка', color: '#b84dff', price: 500 },
+  { id: 'rage', name: '4. Пламя Ярости', bonusText: '+1 урон', color: '#ff3344', price: 850 },
+  { id: 'god', name: '5. Сверхновая', bonusText: '+10% скорость, +1 урон', color: '#00ff88', price: 1500 }
+);
+var trailsCatalog = Array.of(
+  { id: 'ion', name: 'Ионный след', desc: 'Голубой шлейф', color: '#00ccff', price: 0 },
+  { id: 'fire', name: 'Огненный трак', desc: 'Огненный след', color: '#ff6600', price: 100 },
+  { id: 'toxic', name: 'Кислота', desc: 'Зелёный след', color: '#00ff66', price: 220 },
+  { id: 'void', name: 'Тёмная материя', desc: 'Фиолетовый шлейф', color: '#aa00ff', price: 400 },
+  { id: 'star', name: 'Золотая пыль', desc: 'Золотые искры', color: '#ffd700', price: 650 },
+  { id: 'rainbow', name: 'Гипердрайв', desc: 'Радужный след', color: 'rainbow', price: 1000 }
+);
+var ultsCatalog = Array.of(
+  { id: 'fireball', name: 'Огненный шар', desc: '3D-взрыв (50-100 HP)', color: '#ff6600', cd: 1200, price: 0 },
+  { id: 'frost', name: 'Ледяная нова', desc: 'Урон + заморозка 4с', color: '#00ffff', cd: 1080, price: 1000 },
+  { id: 'meteor', name: 'Метеоритный дождь', desc: '5 огненных шаров', color: '#ff3300', cd: 1200, price: 1800 },
+  { id: 'lightning', name: 'Цепная молния', desc: 'Удар током до 8 врагов', color: '#ffff00', cd: 960, price: 2600 },
+  { id: 'blackhole', name: 'Чёрная дыра', desc: 'Воронка урон + стяжка', color: '#aa00ff', cd: 1320, price: 3800 },
+  { id: 'sunbeam', name: 'Аннигиляция', desc: 'Гигантский луч', color: '#00ff88', cd: 1500, price: 5000 }
+);
+var duelBossDefs = Array.of(
+  { idx: 1, name: 'ПЕНТАГОН', sides: 5, hp: 3000, r: 62, color: '#ffaa00', reward: 2500, desc: '5 углов • Двойные спирали + прицельные веера' },
+  { idx: 2, name: 'ГЕКСАГОН', sides: 6, hp: 5500, r: 68, color: '#00e5ff', reward: 5000, desc: '6 углов • Перекрёстные стены пуль + кольца' },
+  { idx: 3, name: 'ГЕПТАГОН', sides: 7, hp: 8000, r: 74, color: '#33ff77', reward: 8500, desc: '7 углов • 7 смертельных 3D-лазеров + спирали' },
+  { idx: 4, name: 'ОКТАГОН', sides: 8, hp: 12000, r: 80, color: '#ff33aa', reward: 14000, desc: '8 углов • Безумный таран + шквал рикошетов' },
+  { idx: 5, name: 'АБСОЛЮТ', sides: 0, hp: 18000, r: 88, color: '#ff1144', reward: 25000, desc: 'Сфера • Град 3D-метеоритов + звёздные залпы' }
+);
+var selectedDuelBoss = 1;
+var achCatalog = Array.of(
+{ id: 'k50', title: 'Новобранец 3D', desc: 'Уничтожить 50 врагов', reward: 300, cur: function() { return gStats.kills || 0; }, req: 50 },
+{ id: 'k300', title: 'Охотник за головами', desc: 'Уничтожить 300 врагов', reward: 1500, cur: function() { return gStats.kills || 0; }, req: 300 },
+{ id: 'b1', title: 'Первая кровь', desc: 'Победить 1 любого 3D-босса', reward: 500, cur: function() { return gStats.bosses || 0; }, req: 1 },
+{ id: 'b15', title: 'Убийца Титанов', desc: 'Победить 15 боссов', reward: 4000, cur: function() { return gStats.bosses || 0; }, req: 15 },
+{ id: 't1', title: 'Чемпион Арены', desc: 'Заработать 1 Кубок (пройти 5 боссов)', reward: 6000, cur: function() { return duelTrophies; }, req: 1 },
+{ id: 't5', title: 'Легенда Испытаний', desc: 'Собрать 5 Кубков', reward: 20000, cur: function() { return duelTrophies; }, req: 5 },
+{ id: 'r1', title: 'Прорыв Обороны', desc: 'Дойти до финиша в режиме «Прорыв»', reward: 1200, cur: function() { return gStats.raids || 0; }, req: 1 },
+{ id: 'coop1', title: 'Боевое Братство', desc: 'Сыграть бой в режиме «С другом»', reward: 800, cur: function() { return gStats.coops || 0; }, req: 1 }
+);
+var arenaMaps = Array.of(
+{ id: 'wasteland', name: 'Пустошь 3D', shape: 'rect', w: 3500, h: 3000, bg: '#1e1915', line: '#3b3026', wallColor: '#7a593c', wallTop: '#a87c54', walls: Array.of(
+{x: 750, y: 650, w: 600, h: 70}, {x: 750, y: 650, w: 70, h: 550},
+{x: 2150, y: 650, w: 600, h: 70}, {x: 2680, y: 650, w: 70, h: 550},
+{x: 750, y: 2280, w: 600, h: 70}, {x: 750, y: 1800, w: 70, h: 550},
+{x: 2150, y: 2280, w: 600, h: 70}, {x: 2680, y: 1800, w: 70, h: 550},
+{x: 1500, y: 1250, w: 500, h: 70}, {x: 1500, y: 1680, w: 500, h: 70}
+)},
+{ id: 'metro', name: 'Неон-Сити 3D', shape: 'rect', w: 3500, h: 3000, bg: '#131d29', line: '#22384f', wallColor: '#2f567a', wallTop: '#4da6ff', walls: Array.of(
+{x: 500, y: 450, w: 340, h: 340}, {x: 1580, y: 450, w: 340, h: 340}, {x: 2660, y: 450, w: 340, h: 340},
+{x: 500, y: 1330, w: 340, h: 340}, {x: 2660, y: 1330, w: 340, h: 340},
+{x: 500, y: 2210, w: 340, h: 340}, {x: 1580, y: 2210, w: 340, h: 340}, {x: 2660, y: 2210, w: 340, h: 340},
+{x: 1450, y: 1200, w: 60, h: 600}, {x: 1990, y: 1200, w: 60, h: 600}
+)},
+{ id: 'coliseum', name: 'Колизей 3D', shape: 'circle', w: 3400, h: 3400, cx: 1700, cy: 1700, cr: 1620, bg: '#181826', line: '#2d2d4a', wallColor: '#484878', wallTop: '#7b7be0', walls: Array.of(
+{x: 1150, y: 1150, w: 320, h: 60}, {x: 1930, y: 1150, w: 320, h: 60},
+{x: 1150, y: 2190, w: 320, h: 60}, {x: 1930, y: 2190, w: 320, h: 60},
+{x: 1150, y: 1150, w: 60, h: 320}, {x: 1150, y: 1930, w: 60, h: 320},
+{x: 2190, y: 1150, w: 60, h: 320}, {x: 2190, y: 1930, w: 60, h: 320}
+)}
+);
+var raidMaps = Array.of({
+id: 'raid_canyon', name: 'Каньон Прорыва 3D', shape: 'rect', w: 8600, h: 1200,
+bg: '#1a1524', line: '#322845', wallColor: '#4c3d69', wallTop: '#8966cc',
+start: { x: 180, y: 600 }, goal: { x: 8320, y: 600, r: 105 },
+walls: Array.of(
+{x: 850, y: 0, w: 70, h: 460}, {x: 850, y: 740, w: 70, h: 460}, {x: 1650, y: 280, w: 70, h: 640},
+{x: 2550, y: 0, w: 70, h: 440}, {x: 2550, y: 760, w: 70, h: 440}, {x: 3450, y: 220, w: 100, h: 260}, {x: 3450, y: 720, w: 100, h: 260},
+{x: 4350, y: 0, w: 70, h: 480}, {x: 4350, y: 720, w: 70, h: 480}, {x: 5250, y: 290, w: 80, h: 620},
+{x: 6150, y: 0, w: 70, h: 450}, {x: 6150, y: 750, w: 70, h: 450}, {x: 7050, y: 240, w: 110, h: 260}, {x: 7050, y: 700, w: 110, h: 260},
+{x: 7750, y: 340, w: 70, h: 520}
+)
+});
+var duelArenaMap = {
+id: 'duel_sanctum', name: 'Зал Испытаний 3D', shape: 'rect', w: 1500, h: 1100,
+bg: '#120e1c', line: '#2a1f3d', wallColor: '#5c2b6e', wallTop: '#b84dff',
+walls: Array.of({x: 330, y: 270, w: 90, h: 90}, {x: 1080, y: 270, w: 90, h: 90}, {x: 330, y: 740, w: 90, h: 90}, {x: 1080, y: 740, w: 90, h: 90})
+};
+var currentMap = arenaMaps.find(Boolean);
+var matchBuffs = { dmg: 0, spdStacks: 0, maxHpBonus: 0, fireCdReduce: 0, critChance: 0, vampirism: 0, armor: 0, ultCdMult: 1, magnetBonus: 0, doubleShot: false };
+var cachedShip = shipsCatalog.find(Boolean), cachedAura = aurasCatalog.find(Boolean), cachedTrail = trailsCatalog.find(Boolean), cachedUlt = ultsCatalog.find(Boolean);
+function getCatalogItem(arr, id) {
+if (!arr || !arr.length) return { c1: '#d8e0e8', c2: '#556677', core: '#00ccff', color: '#ff6600', cd: 1200 };
+for (var i = 0; i < arr.length; i++) if (arr[i].id === id) return arr[i];
+return arr.find(Boolean);
+}
+function refreshCosmeticsCache() {
+cachedShip = getCatalogItem(shipsCatalog, curShip); cachedAura = getCatalogItem(aurasCatalog, curAura);
+cachedTrail = getCatalogItem(trailsCatalog, curTrail); cachedUlt = getCatalogItem(ultsCatalog, curUlt);
+}
+refreshCosmeticsCache();
+function showConsole() { document.getElementById('m-menu').style.display = 'none'; document.getElementById('m-console').style.display = 'flex'; document.getElementById('console-code').value = ''; document.getElementById('console-msg').innerText = ''; }
+function runConsole() {
+var val = document.getElementById('console-code').value.trim(), msgEl = document.getElementById('console-msg');
+if (val === '110110') { bank += 200000; saveProgress(); playTone(750, 'sine', 0.35, 1300); msgEl.style.color = '#00ff88'; msgEl.innerText = '+200 000 монет!'; document.getElementById('console-code').value = ''; }
+else if (val === '221010') { bank = 0; duelUnlocked = 1; duelTrophies = 0; saveProgress(); msgEl.style.color = '#ff5555'; msgEl.innerText = 'Прогресс обнулён!'; document.getElementById('console-code').value = ''; }
+else { msgEl.style.color = '#ff4444'; msgEl.innerText = 'Неверный пароль!'; }
+}
+function getPlayerStats() {
+var spd = Math.min(8.8, (3.8 + (upg.speed || 0) * 0.35) * (1 + matchBuffs.spdStacks * 0.12) * (curAura === 'wind' ? 1.12 : (curAura === 'god' ? 1.10 : 1)));
+var dmg = 1 + (upg.damage || 0) + matchBuffs.dmg + ((curAura === 'rage' || curAura === 'god') ? 1 : 0);
+var cd = Math.max(120, 600 - (upg.dashCd || 0) * 80); if (curAura === 'chrono') cd = Math.max(102, Math.round(cd * 0.85));
+var magLvl = upg.magnet || 0, magRange = (magLvl === 0 ? 36 : (36 + magLvl * 48)) + matchBuffs.magnetBonus + (curAura === 'magnet' ? 65 : 0);
+return {
+speed: spd, damage: dmg, gunLvl: Math.min(11, 1 + (upg.damage || 0) + matchBuffs.dmg),
+ricochetLvl: Math.min(3, upg.ricochet || 0), fireCdFrames: Math.max(5, 11 - matchBuffs.fireCdReduce),
+ultDmg: 50 + (upg.fireball || 0) * 10, maxSurvivalHp: 100 + (upg.maxHp || 0) * 100 + matchBuffs.maxHpBonus,
+dashMult: 1.7 + (upg.dashPow || 0) * 0.35, dashFrames: 8 + (upg.dashPow || 0) * 3,
+dashCdFrames: cd, hasDashShield: (upg.dashShield || 0) > 0, shieldFrames: 210 + (upg.shield || 0) * 36,
+magnetRange: magRange, hasAutoFire: (upg.autoFire || 0) > 0, droneCount: Math.min(3, upg.drone || 0)
+};
+}
+var p = {x: 1750, y: 1500, vx: 0, vy: 0, r: 17, bodyAngle: 0, turretAngle: 0, shield: 0, dashTime: 0, dashCd: 0, dashDirX: 1, dashDirY: 0, fireCd: 0, fbCd: 0, hp: 100, maxHp: 100};
+var p2 = {x: 1810, y: 1500, vx: 0, vy: 0, r: 17, bodyAngle: 0, turretAngle: 0, shield: 0, dashTime: 0, dashCd: 0, dashDirX: 1, dashDirY: 0, fireCd: 0};
+var drones = [], droneBaseAngle = 0, items = [], enemies = [], pBullets = [], fireballs = [], eBullets = [], laserBeams = [], warnBeams = [], bossLasers = [], bossMeteors = [], blackHoles = [], particles = [], popups = [], keys = {};
+var mouse = { x: VW / 2, y: VH / 2, down: false }, touchMove = { active: false, id: null, dx: 0, dy: 0 }, touchAim = { active: false, id: null, dx: 0, dy: 0 };
+var bosses = [], bossesKilled = 0, bossSpawnCd = 0, raidNextBossIdx = 0, combo = 1, comboTimer = 0, msgText = '', msgTimer = 0, shakeTime = 0, shakeMag = 0, hitstopTimer = 0, flashAlpha = 0;
+function saveProgress() {
+writeStorage('mg3_bank', bank); writeStorage('mg3_duel_lvl', duelUnlocked); writeStorage('mg3_trophies', duelTrophies);
+writeStorage('mg3_stats', JSON.stringify(gStats)); writeStorage('mg3_ach', JSON.stringify(claimedAch));
+writeStorage('mg3_ships', JSON.stringify(ownedShips)); writeStorage('mg3_auras', JSON.stringify(ownedAuras));
+writeStorage('mg3_trails', JSON.stringify(ownedTrails)); writeStorage('mg3_ults', JSON.stringify(ownedUlts));
+writeStorage('mg3_cur_ship', curShip); writeStorage('mg3_cur_aura', curAura); writeStorage('mg3_cur_trail', curTrail); writeStorage('mg3_cur_ult', curUlt);
+writeStorage('mg3_upg', JSON.stringify(upg)); writeStorage('mg3_sens', mouseSens); writeStorage('mg3_zoom', camZoom); writeStorage('mg3_binds', JSON.stringify(keyBinds));
+var elBank = document.getElementById('bank-val'); if (elBank) elBank.innerText = bank;
+var elShop = document.getElementById('shop-bank'); if (elShop) elShop.innerText = bank;
+var elTree = document.getElementById('tree-bank'); if (elTree) elTree.innerText = bank;
+updateControlsHint();
+}
+saveProgress();
+function setMode(m) {
+gameMode = m;
+Array.of('classic','raid','boss','rush','surv','duel','coop').forEach(function(id) { var el = document.getElementById('mode-' + id); if (el) el.className = 'tab-btn' + (m === id ? ' active-mode' : ''); });
+}
+function setDiff(d) {
+diff = d;
+Array.of('easy','norm','hard').forEach(function(id) { var el = document.getElementById('d-' + id); if (el) el.className = 'tab-btn' + (d === id ? ' active-diff' : ''); });
+}
+function openBossDuelMenu() {
+setMode('duel'); document.getElementById('m-menu').style.display = 'none'; document.getElementById('m-duel').style.display = 'flex';
+var h2 = document.getElementById('m-duel').querySelector('h2'); if (h2) h2.innerHTML = 'БИТВА С 3D-БОССОМ • КУБКИ: ' + duelTrophies + ' / 100 🏆';
+var list = document.getElementById('duel-list'); list.innerHTML = '';
+for (var i = 0; i < duelBossDefs.length; i++) {
+var db = duelBossDefs[i], unlocked = db.idx <= duelUnlocked, card = document.createElement('div');
+card.className = 'duel-card' + (unlocked ? '' : ' locked'); card.style.borderColor = unlocked ? db.color : '#444';
+card.innerHTML = 'БОСС ' + db.idx + ': ' + db.name + 'HP: ' + db.hp + ' | Награда: +' + db.reward + '' + db.desc + '';
+var btn = document.createElement('button');
+if (unlocked) { btn.innerText = db.idx < duelUnlocked ? 'Сразиться снова' : 'В 3D-БОЙ!'; btn.style.borderColor = db.color; btn.onclick = (function(n) { return function() { selectedDuelBoss = n; document.getElementById('m-duel').style.display = 'none'; startGame(); }; })(db.idx); }
+else { btn.innerText = 'ЗАКРЫТО (Победите Босса ' + (db.idx - 1) + ')'; btn.disabled = true; }
+card.appendChild(btn); list.appendChild(card);
+}
+}
+function showAch() {
+document.getElementById('m-menu').style.display = 'none'; document.getElementById('m-ach').style.display = 'flex'; saveProgress();
+var list = document.getElementById('ach-list'); list.innerHTML = '';
+for (var i = 0; i < achCatalog.length; i++) {
+var a = achCatalog[i], done = claimedAch.indexOf(a.id) !== -1, val = Math.min(a.req, a.cur()), ready = !done && val >= a.req, pct = Math.round((val / a.req) * 100);
+var node = document.createElement('div'); node.className = 'upg-node'; node.style.borderColor = done ? '#00ff88' : (ready ? '#ffd700' : '#404062');
+node.innerHTML = '' + a.title + '+' + a.reward + '' + a.desc + ' (' + val + ' / ' + a.req + ')';
+var btn = document.createElement('button');
+if (done) { btn.innerText = 'ПОЛУЧЕНО ✓'; btn.style.borderColor = '#00ff88'; btn.style.color = '#00ff88'; }
+else if (ready) { btn.innerText = 'ЗАБРАТЬ НАГРАДУ (+' + a.reward + ')'; btn.style.borderColor = '#ffd700'; btn.style.background = '#473e1e'; btn.style.color = '#ffd700'; btn.onclick = (function(ao) { return function() { if (claimedAch.indexOf(ao.id) === -1) { claimedAch.push(ao.id); bank += ao.reward; playTone(760, 'sine', 0.35, 1350); showAch(); } }; })(a); }
+else { btn.innerText = 'В процессе (' + pct + '%)'; btn.style.opacity = '0.55'; }
+node.appendChild(btn); list.appendChild(node);
+}
+}
+function showMenu() {
+listeningAction = null; refreshCosmeticsCache(); saveProgress();
+Array.of('m-console','m-pause','m-tree','m-shop','m-set','m-end','m-lvlup','m-duel','m-ach').forEach(function(id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
+document.getElementById('m-menu').style.display = 'flex'; document.getElementById('pause-hud-btn').style.display = 'none'; state = 'menu'; updateTouchUI();
+}
+function showSet(from, tab) { setReturnTo = from || 'menu'; document.getElementById('m-menu').style.display = 'none'; document.getElementById('m-pause').style.display = 'none'; document.getElementById('m-set').style.display = 'flex'; document.getElementById('set-back-btn').style.display = (setReturnTo === 'pause') ? 'inline-block' : 'none'; switchSetTab(tab || 'general'); }
+function switchSetTab(tab) { listeningAction = null; document.getElementById('stab-general').className = 'tab-btn' + (tab === 'general' ? ' active-shop' : ''); document.getElementById('stab-controls').className = 'tab-btn' + (tab === 'controls' ? ' active-shop' : ''); document.getElementById('set-general').style.display = tab === 'general' ? 'flex' : 'none'; document.getElementById('set-controls').style.display = tab === 'controls' ? 'flex' : 'none'; if (tab === 'controls') renderBinds(); }
+function renderBinds() {
+var list = document.getElementById('bind-list'); list.innerHTML = '';
+for (var i = 0; i < bindLabels.length; i++) {
+var b = bindLabels[i], row = document.createElement('div'); row.className = 'bind-row'; row.innerHTML = '' + b.name + '';
+var btn = document.createElement('button'); btn.className = 'bind-btn' + (listeningAction === b.id ? ' listening' : ''); btn.innerText = listeningAction === b.id ? 'Жмите...' : formatKeyName(keyBinds[b.id]);
+btn.onclick = (function(a) { return function() { listeningAction = a; renderBinds(); }; })(b.id); row.appendChild(btn); list.appendChild(row);
+}
+}
+function resetBinds() { listeningAction = null; keyBinds = Object.assign({}, defaultBinds); saveProgress(); renderBinds(); }
+function closeSet() { listeningAction = null; saveProgress(); document.getElementById('m-set').style.display = 'none'; if (setReturnTo === 'pause') document.getElementById('m-pause').style.display = 'flex'; else showMenu(); }
+function showTree(page) {
+if (page) treePage = page;
+document.getElementById('m-menu').style.display = 'none'; document.getElementById('m-tree').style.display = 'flex';
+document.getElementById('tpage-1').className = 'tab-btn' + (treePage === 1 ? ' active-shop' : ''); document.getElementById('tpage-2').className = 'tab-btn' + (treePage === 2 ? ' active-shop' : ''); saveProgress();
+var list = document.getElementById('tree-list'); list.innerHTML = '';
+for (var i = 0; i < upgMeta.length; i++) {
+var item = upgMeta[i]; if (item.page !== treePage) continue;
+var lvl = upg[item.key] || 0, maxLvl = item.max, node = document.createElement('div'); node.className = 'upg-node';
+var pipsHtml = ''; for (var b = 0; b < maxLvl; b++) pipsHtml += ''; pipsHtml += '';
+node.innerHTML = '' + item.name + 'Ур. ' + lvl + '/' + maxLvl + '' + item.desc + '' + pipsHtml;
+var btn = document.createElement('button');
+if (lvl >= maxLvl) { btn.innerText = 'МАКСИМУМ'; btn.style.borderColor = '#00ff88'; btn.style.color = '#00ff88'; }
+else { var price = getUpgPrice(item, lvl); btn.innerText = 'Улучшить (' + price + ')'; if (bank < price) btn.style.opacity = '0.5'; btn.onclick = (function(k, pC, mL) { return function() { var cv = upg[k] || 0; if (bank >= pC && cv < mL) { bank -= pC; upg[k] = cv + 1; playTone(650, 'sine', 0.25, 1150); showTree(); } }; })(item.key, price, maxLvl); }
+node.appendChild(btn); list.appendChild(node);
+}
+}
+function showShop(tab) {
+if (tab) shopTab = tab;
+document.getElementById('m-menu').style.display = 'none'; document.getElementById('m-shop').style.display = 'flex';
+Array.of('ship','aura','trail','ult').forEach(function(id) { document.getElementById('tab-' + id).className = 'tab-btn' + (shopTab === id ? ' active-shop' : ''); });
+refreshCosmeticsCache(); saveProgress();
+var list = document.getElementById('skins-list'); list.innerHTML = '';
+var catalog = shopTab === 'ship' ? shipsCatalog : (shopTab === 'aura' ? aurasCatalog : (shopTab === 'trail' ? trailsCatalog : ultsCatalog));
+var ownedList = shopTab === 'ship' ? ownedShips : (shopTab === 'aura' ? ownedAuras : (shopTab === 'trail' ? ownedTrails : ownedUlts));
+var currentId = shopTab === 'ship' ? curShip : (shopTab === 'aura' ? curAura : (shopTab === 'trail' ? curTrail : curUlt));
+for (var i = 0; i < catalog.length; i++) {
+var it = catalog[i], isOwned = ownedList.indexOf(it.id) !== -1, isEquipped = currentId === it.id;
+var col = shopTab === 'ship' ? it.c1 : it.color, bg = col === 'rainbow' ? 'linear-gradient(45deg, red, yellow, lime, cyan, magenta)' : (col === 'transparent' ? '#222' : col);
+var card = document.createElement('div'); card.className = 'skin-card';
+card.innerHTML = '' + it.name + '' + (shopTab === 'aura' ? it.bonusText : it.desc) + '';
+var btn = document.createElement('button');
+if (isEquipped) { btn.innerText = 'Активно'; btn.style.borderColor = '#00ff88'; btn.style.color = '#00ff88'; }
+else if (isOwned) { btn.innerText = 'Выбрать'; btn.onclick = (function(id, t) { return function() { if (t === 'ship') curShip = id; else if (t === 'aura') curAura = id; else if (t === 'trail') curTrail = id; else curUlt = id; showShop(); }; })(it.id, shopTab); }
+else { btn.innerText = 'Купить (' + it.price + ')'; if (bank < it.price) btn.style.opacity = '0.5'; btn.onclick = (function(io, t) { return function() { if (bank >= io.price) { bank -= io.price; if (t === 'ship') { ownedShips.push(io.id); curShip = io.id; } else if (t === 'aura') { ownedAuras.push(io.id); curAura = io.id; } else if (t === 'trail') { ownedTrails.push(io.id); curTrail = io.id; } else { ownedUlts.push(io.id); curUlt = io.id; } playTone(700, 'sine', 0.3, 1200); showShop(); } }; })(it, shopTab); }
+    card.appendChild(btn); list.appendChild(card);
+  }
+}
+function changeVol(v) { vol = parseFloat(v); document.getElementById('vol-label').innerText = Math.round(vol * 100) + '%'; if (gain) gain.gain.value = vol; }
+function changeZoom(v) { camZoom = parseFloat(v); document.getElementById('zoom-label').innerText = Math.round(camZoom * 100) + '%'; saveProgress(); }
+function changeSens(v) { mouseSens = parseFloat(v); document.getElementById('sens-label').innerText = Math.round((mouseSens / 0.35) * 100) + '%'; saveProgress(); }
+function initAudio() { try { if (!actx) { var AC = window.AudioContext || window.webkitAudioContext; actx = new AC(); gain = actx.createGain(); gain.gain.value = vol; gain.connect(actx.destination); } if (actx.state === 'suspended') actx.resume(); } catch (e) {} }
+function playTone(freq, type, dur, slide) { if (!actx || vol === 0) return; try { var o = actx.createOscillator(), g = actx.createGain(); o.type = type; o.frequency.setValueAtTime(freq, actx.currentTime); if (slide) o.frequency.exponentialRampToValueAtTime(slide, actx.currentTime + dur); g.gain.setValueAtTime(0.11, actx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + dur); o.connect(g); g.connect(gain); o.start(); o.stop(actx.currentTime + dur); } catch (e) {} }
+function playMusic() { initAudio(); }
+function setupTouchControls() {
+var jl = document.getElementById('joy-left'), kl = document.getElementById('knob-left'), jr = document.getElementById('joy-right'), kr = document.getElementById('knob-right');
+function hs(el, knob, stO, e, isAim) {
+e.preventDefault(); var r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+for (var i = 0; i < e.changedTouches.length; i++) {
+var t = e.changedTouches[i];
+if (stO.id === null || stO.id === t.identifier) {
+stO.id = t.identifier; stO.active = true;
+var dx = t.clientX - cx, dy = t.clientY - cy, d = Math.hypot(dx, dy); if (d > 40) { dx = (dx / d) * 40; dy = (dy / d) * 40; }
+knob.style.transform = 'translate(' + dx + 'px,' + dy + 'px)'; stO.dx = dx / 40; stO.dy = dy / 40;
+if (isAim && d > 8) { p.turretAngle = Math.atan2(dy, dx); mouse.down = true; }
+}
+}
+}
+function rs(knob, stO, e, isAim) { for (var i = 0; i < e.changedTouches.length; i++) if (e.changedTouches[i].identifier === stO.id) { stO.id = null; stO.active = false; stO.dx = 0; stO.dy = 0; knob.style.transform = 'translate(0px,0px)'; if (isAim) mouse.down = false; } }
+jl.addEventListener('touchstart', function(e) { hs(jl, kl, touchMove, e, false); }, {passive: false}); jl.addEventListener('touchmove', function(e) { hs(jl, kl, touchMove, e, false); }, {passive: false}); jl.addEventListener('touchend', function(e) { rs(kl, touchMove, e, false); });
+jr.addEventListener('touchstart', function(e) { hs(jr, kr, touchAim, e, true); }, {passive: false}); jr.addEventListener('touchmove', function(e) { hs(jr, kr, touchAim, e, true); }, {passive: false}); jr.addEventListener('touchend', function(e) { rs(kr, touchAim, e, true); });
+document.getElementById('tbtn-dash').addEventListener('touchstart', function(e) { e.preventDefault(); triggerDash(); }, {passive: false});
+document.getElementById('tbtn-ult').addEventListener('touchstart', function(e) { e.preventDefault(); triggerUlt(); }, {passive: false});
+}
+setupTouchControls();
+function distSq(x1, y1, x2, y2) { var dx = x1 - x2, dy = y1 - y2; return dx * dx + dy * dy; }
+function lerpAngle(a, b, t) { var d = b - a; while (d < -Math.PI) d += Math.PI * 2; while (d > Math.PI) d -= Math.PI * 2; return a + d * t; }
+function distToSegmentSq(px, py, x1, y1, x2, y2) {
+  var l2 = distSq(x1, y1, x2, y2); if (l2 === 0) return distSq(px, py, x1, y1);
+  var t = Math.max(0, Math.min(1, ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2));
+  return distSq(px, py, x1 + t * (x2 - x1), y1 + t * (y2 - y1));
+}
+function addShake(mag, frames) { shakeMag = Math.max(shakeMag, mag); shakeTime = Math.max(shakeTime, frames); }
+function addPopup(x, y, text, color) { if (popups.length > 22) popups.shift(); popups.push({ x: x, y: y, text: text, color: color, life: 36 }); }
+function addParticles(x, y, color, count) {
+  if (particles.length > 140) return;
+  for (var i = 0; i < (count || 6); i++) {
+    particles.push({ x: x, y: y, z: 14, vx: (Math.random() - 0.5) * 7, vy: (Math.random() - 0.5) * 7, vz: 2.5 + Math.random() * 4, color: color, life: 18 });
+  }
+}
+function isInsideArena(x, y, pad) {
+  if (currentMap.shape === 'circle') { var maxR = currentMap.cr - (pad || 0); return distSq(x, y, currentMap.cx, currentMap.cy) <= maxR * maxR; }
+  return x >= pad && x <= MW - pad && y >= pad && y <= MH - pad;
+}
+function clampToArena(obj, rad) {
+  if (currentMap.shape === 'circle') {
+    var dx = obj.x - currentMap.cx, dy = obj.y - currentMap.cy, maxR = currentMap.cr - rad, dSq = dx * dx + dy * dy;
+    if (dSq > maxR * maxR) { var d = Math.sqrt(dSq); obj.x = currentMap.cx + (dx / d) * maxR; obj.y = currentMap.cy + (dy / d) * maxR; return true; }
+    return false;
+  }
+  var hit = false;
+  if (obj.x < rad) { obj.x = rad; hit = true; } else if (obj.x > MW - rad) { obj.x = MW - rad; hit = true; }
+  if (obj.y < rad) { obj.y = rad; hit = true; } else if (obj.y > MH - rad) { obj.y = MH - rad; hit = true; }
+  return hit;
+}
+function hitsWall(rx, ry, rw, rh) {
+  var walls = currentMap.walls;
+  for (var i = 0; i < walls.length; i++) { var w = walls[i]; if (rx < w.x + w.w && rx + rw > w.x && ry < w.y + w.h && ry + rh > w.y) return true; }
+  return false;
+}
+function clipRayToWalls(x1, y1, x2, y2) {
+  var steps = 48, dx = (x2 - x1) / steps, dy = (y2 - y1) / steps;
+  for (var s = 1; s <= steps; s++) { var px = x1 + dx * s, py = y1 + dy * s; if (hitsWall(px - 3, py - 3, 6, 6)) return { x: px, y: py }; }
+  return { x: x2, y: y2 };
+}
+function getSafePos(size, offscreenOnly) {
+  for (var tries = 0; tries < 120; tries++) {
+    var rx = Math.random() * (MW - size - 160) + 80, ry = Math.random() * (MH - size - 160) + 80;
+    if (!isInsideArena(rx + size * 0.5, ry + size * 0.5, size + 30)) continue;
+    if (hitsWall(rx - 20, ry - 20, size + 40, size + 40)) continue;
+    if (offscreenOnly && distSq(rx, ry, p.x, p.y) < 360000) continue;
+    return {x: rx, y: ry};
+  }
+  return { x: currentMap.cx || 400, y: currentMap.cy || 400 };
+}
+
+function showBanner(text) { msgText = text; msgTimer = 140; }
+function spawnItem(forcedType) {
+  var r = Math.random(), type = forcedType || (r < 0.72 ? 'coin' : (r < 0.90 ? 'gem' : 'boost')), pos = getSafePos(24, false);
+  items.push({ x: pos.x, y: pos.y, type: type, life: type === 'coin' ? 9999 : 900 });
+}
+function getDiffSpeedMult() { return diff === 'easy' ? 0.65 : (diff === 'hard' ? 1.45 : 1.0); }
+function isSurvBossPhase() { return gameMode === 'surv' && level >= 20; }
+function hasHpBar() { return gameMode === 'surv' || gameMode === 'raid' || gameMode === 'duel'; }
+
+function findNearestTarget(fromX, fromY, maxRange) {
+  var best = null, bestDistSq = maxRange * maxRange;
+  for (var bi = 0; bi < bosses.length; bi++) {
+    var b = bosses[bi]; if (!b) continue;
+    var bx = b.x + b.s * 0.5, by = b.y + b.s * 0.5, bd = distSq(bx, by, fromX, fromY);
+    if (bd < bestDistSq) { bestDistSq = bd; best = { x: bx, y: by }; }
+  }
+  for (var i = 0; i < enemies.length; i++) {
+    var ex = enemies[i].x + 13, ey = enemies[i].y + 13, d = distSq(ex, ey, fromX, fromY);
+    if (d < bestDistSq) { bestDistSq = d; best = { x: ex, y: ey }; }
+  }
+  return best;
+}
+
+function triggerDash() {
+  if (state !== 'play' || p.dashCd > 0) return;
+  var st = getPlayerStats(); p.dashTime = st.dashFrames; p.dashCd = st.dashCdFrames;
+  if (st.hasDashShield) p.shield = Math.max(p.shield, 120);
+  var dx = 0, dy = 0;
+  if (gameMode === 'coop') { if (keys['KeyW']) dy -= 1; if (keys['KeyS']) dy += 1; if (keys['KeyA']) dx -= 1; if (keys['KeyD']) dx += 1; }
+  else {
+    if (keys[keyBinds.up] || keys['ArrowUp']) dy -= 1; if (keys[keyBinds.down] || keys['ArrowDown']) dy += 1;
+    if (keys[keyBinds.left] || keys['ArrowLeft']) dx -= 1; if (keys[keyBinds.right] || keys['ArrowRight']) dx += 1;
+    if (touchMove.active) { dx = touchMove.dx; dy = touchMove.dy; }
+  }
+  if (dx !== 0 || dy !== 0) { var l = Math.hypot(dx, dy); p.dashDirX = dx / l; p.dashDirY = dy / l; }
+  else { p.dashDirX = Math.cos(p.turretAngle); p.dashDirY = Math.sin(p.turretAngle); }
+  playTone(550, 'sine', 0.22, 1200); addParticles(p.x, p.y, '#00ffff', 10);
+}
+
+function triggerDashP2() {
+  if (state !== 'play' || gameMode !== 'coop' || p2.dashCd > 0) return;
+  var st = getPlayerStats(); p2.dashTime = st.dashFrames; p2.dashCd = st.dashCdFrames;
+  if (st.hasDashShield) p2.shield = Math.max(p2.shield, 120);
+  var dx = 0, dy = 0;
+  if (keys['ArrowUp']) dy -= 1; if (keys['ArrowDown']) dy += 1; if (keys['ArrowLeft']) dx -= 1; if (keys['ArrowRight']) dx += 1;
+  if (dx !== 0 || dy !== 0) { var l = Math.hypot(dx, dy); p2.dashDirX = dx / l; p2.dashDirY = dy / l; }
+  else { p2.dashDirX = Math.cos(p2.turretAngle); p2.dashDirY = Math.sin(p2.turretAngle); }
+  playTone(620, 'sine', 0.22, 1300); addParticles(p2.x, p2.y, '#00ccff', 10);
+}
+
+function triggerUlt() {
+  if (state !== 'play' || gameMode === 'coop' || p.fbCd > 0) return;
+  var st = getPlayerStats(); p.fbCd = Math.round(cachedUlt.cd * matchBuffs.ultCdMult);
+  var fx = p.x + Math.cos(p.turretAngle) * 26, fy = p.y + Math.sin(p.turretAngle) * 26;
+  if (curUlt === 'fireball' || curUlt === 'frost') {
+    fireballs.push({ x: fx, y: fy, vx: Math.cos(p.turretAngle) * 9, vy: Math.sin(p.turretAngle) * 9, dmg: st.ultDmg, kind: curUlt, life: 110 });
+    playTone(220, 'sawtooth', 0.45, 70);
+  } else if (curUlt === 'meteor') {
+    for (var m = -2; m <= 2; m++) {
+      var ma = p.turretAngle + m * 0.14;
+      fireballs.push({ x: fx, y: fy, vx: Math.cos(ma) * 10, vy: Math.sin(ma) * 10, dmg: Math.round(st.ultDmg * 0.65), kind: 'fireball', life: 95 });
+    }
+    playTone(180, 'sawtooth', 0.5, 50);
+  } else if (curUlt === 'lightning') {
+    var hits = 0;
+    for (var bi = bosses.length - 1; bi >= 0; bi--) {
+      if (distSq(p.x, p.y, bosses[bi].x + bosses[bi].s * 0.5, bosses[bi].y + bosses[bi].s * 0.5) < 420000) { damageBoss(bosses[bi], st.ultDmg * 1.4); hits++; }
+    }
+    for (var ei = enemies.length - 1; ei >= 0; ei--) {
+      if (hits < 8 && distSq(p.x, p.y, enemies[ei].x + 13, enemies[ei].y + 13) < 420000) {
+        laserBeams.push({ x1: p.x, y1: p.y, x2: enemies[ei].x + 13, y2: enemies[ei].y + 13, life: 18, color: '#ffff00' });
+        damageEnemy(enemies[ei], st.ultDmg); hits++;
+      }
+    }
+    playTone(900, 'square', 0.35, 250);
+  } else if (curUlt === 'blackhole') {
+    blackHoles.push({ x: fx + Math.cos(p.turretAngle) * 140, y: fy + Math.sin(p.turretAngle) * 140, dmg: Math.max(2, Math.round(st.ultDmg / 15)), life: 240 });
+    playTone(140, 'sine', 0.6, 55);
+  } else if (curUlt === 'sunbeam') {
+    var endP = clipRayToWalls(fx, fy, fx + Math.cos(p.turretAngle) * 1200, fy + Math.sin(p.turretAngle) * 1200);
+    laserBeams.push({ x1: fx, y1: fy, x2: endP.x, y2: endP.y, life: 24, color: '#00ff88' });
+    for (var bi2 = bosses.length - 1; bi2 >= 0; bi2--) {
+      if (distToSegmentSq(bosses[bi2].x + bosses[bi2].s * 0.5, bosses[bi2].y + bosses[bi2].s * 0.5, fx, fy, endP.x, endP.y) < 3600) damageBoss(bosses[bi2], st.ultDmg * 2);
+    }
+    for (var ei2 = enemies.length - 1; ei2 >= 0; ei2--) {
+      if (distToSegmentSq(enemies[ei2].x + 13, enemies[ei2].y + 13, fx, fy, endP.x, endP.y) < 1600) damageEnemy(enemies[ei2], st.ultDmg * 2);
+    }
+    addShake(8, 16); playTone(300, 'sawtooth', 0.5, 900);
+  }
+}
+
+glCanvas.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+window.onkeydown = function(e) {
+if (e.code === 'KeyR' && st.hasAutoFire) { autoFireEnabled = !autoFireEnabled; showBanner(autoFireEnabled ? 'АВТО-ТУРЕЛЬ: ВКЛ' : 'АВТО-ТУРЕЛЬ: ВЫКЛ'); }
+  if (listeningAction) {
+    e.preventDefault(); keyBinds[listeningAction] = e.code; listeningAction = null; saveProgress(); renderBinds();
+    document.getElementById('bind-status').innerText = 'Клавиша назначена!'; return;
+  }
+  if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+  if (e.code === 'Space') e.preventDefault();
+  keys[e.code] = true;
+  if (e.code === keyBinds.pause && (state === 'play' || state === 'paused')) togglePause();
+  if (e.code === keyBinds.fullscreen) toggleFullScreen();
+    if (e.code === 'KeyR' && (upg.autoFire || 0) > 0) {
+    autoFireEnabled = !autoFireEnabled;
+    showBanner(autoFireEnabled ? 'АВТО-ТУРЕЛЬ: ВКЛ' : 'АВТО-ТУРЕЛЬ: ВЫКЛ');
+  }
+  if (gameMode === 'coop') { if (e.code === 'KeyQ') triggerDash(); if (e.code === 'Quote') triggerDashP2(); }
+  else { if (e.code === keyBinds.dash) triggerDash(); if (e.code === keyBinds.ult) triggerUlt(); }
+};
+window.onkeyup = function(e) { keys[e.code] = false; };
+glCanvas.addEventListener('mousemove', function(e) {
+  var rect = glCanvas.getBoundingClientRect();
+  mouse.x = (e.clientX - rect.left) * (VW / rect.width); mouse.y = (e.clientY - rect.top) * (VH / rect.height);
+});
+glCanvas.addEventListener('mousedown', function(e) { if (e.button === 0) mouse.down = true; if (e.button === 2) triggerUlt(); });
+window.addEventListener('mouseup', function(e) { if (e.button === 0) mouse.down = false; });
+
+function spawnEnemy(type) {
+  if (isSurvBossPhase() || gameMode === 'duel') return;
+  if (diff === 'easy' && type === 'dasher') type = 'red';
+  if (diff !== 'hard' && type === 'sniper') type = 'hunter';
+  var mult = getDiffSpeedMult(), base = (2.5 + level * 0.14) * mult, pos = getSafePos(28, true);
+  var hp = type === 'sniper' ? 40 : (type === 'hunter' ? 30 : (type === 'dasher' ? 25 : (type === 'laser' ? 20 : 10)));
+var vx = (Math.random() < 0.5 ? -base : base), vy = (Math.random() < 0.5 ? -base : base);
+enemies.push({ x: pos.x, y: pos.y, vx: vx, vy: vy, angle: Math.atan2(vy, vx), type: type, hp: hp, maxHp: hp, shootTimer: Math.floor(Math.random() * 90), frozen: 0 });
+}
+function spawnDuelBoss(bossIdx) {
+var def = duelBossDefs[Math.max(0, Math.min(4, bossIdx - 1))];
+bosses.push({ type: 'duel_poly', duelIdx: def.idx, sides: def.sides, name: def.name, x: MW * 0.5 - def.r, y: MH * 0.35 - def.r, s: def.r * 2, hp: def.hp, maxHp: def.hp, timer: 0, rotAngle: 0, chaosTimer: 0, chaosVx: 0, chaosVy: 0, announcedRage: false, color: def.color, reward: def.reward });
+showBanner('3D-ИСПЫТАНИЕ ' + def.idx + ': ' + def.name + '!'); playTone(110, 'sawtooth', 0.8, 45);
+}
+function spawnBoss(silent, forcedX, forcedY) {
+if (bosses.length >= (isSurvBossPhase() ? 5 : 1)) return;
+var pos = (typeof forcedX === 'number') ? { x: forcedX, y: forcedY } : getSafePos(80, true);
+  bosses.push({ type: 'juggernaut', name: '3D-ТИТАН', x: pos.x, y: pos.y, s: 78, hp: 800, maxHp: 800, timer: 0, rotAngle: 0, color: '#ff3355' });
+  if (!silent) showBanner('3D-БОСС: ТИТАН (800 HP)!');
+}
+function openInGameLevelUp() {
+state = 'lvlup'; mouse.down = false; updateTouchUI();
+document.getElementById('lvlup-num').innerText = level;
+var boxCards = document.getElementById('lvlup-cards'); boxCards.innerHTML = '';
+var pool = Array.of(
+{ title: 'Броня и Ремонт', desc: hasHpBar() ? '+50 Макс. HP и лечение!' : 'Щит на 6 сек + 15 очков!', color: '#00ff88', apply: function() { if (hasHpBar()) { matchBuffs.maxHpBonus += 50; p.maxHp = getPlayerStats().maxSurvivalHp; p.hp = p.maxHp; } else { p.shield = Math.max(p.shield, 360); if (gameMode === 'coop') p2.shield = Math.max(p2.shield, 360); score += 15; } } },
+{ title: 'Усиление Атаки', desc: '+1 к урону всех пушек в бою!', color: '#ff5555', apply: function() { matchBuffs.dmg += 1; } },
+{ title: 'Скорострельность', desc: '+18% к скорости стрельбы!', color: '#ffaa00', apply: function() { matchBuffs.fireCdReduce = Math.min(6, matchBuffs.fireCdReduce + 1.5); } },
+{ title: 'Двойной залп', desc: 'Танк стреляет двумя снарядами веером!', color: '#00ffaa', apply: function() { matchBuffs.doubleShot = true; } }
+);
+for (var i = 0; i < 3; i++) {
+var ch = pool[i % pool.length], card = document.createElement('div'); card.className = 'lvl-card'; card.style.borderColor = ch.color;
+card.innerHTML = '' + ch.title + '' + ch.desc + '';
+card.onclick = (function(pk) { return function() { pk.apply(); playTone(720, 'sine', 0.3, 1250); document.getElementById('m-lvlup').style.display = 'none'; state = 'play'; updateTouchUI(); }; })(ch);
+boxCards.appendChild(card);
+}
+document.getElementById('m-lvlup').style.display = 'flex';
+}
+function getLevelProgress(sc) {
+var lvl = 1, rem = Math.max(0, sc), need = 45;
+while (lvl < 100 && rem >= need) { rem -= need; lvl++; need += 10; }
+return { lvl: lvl, cur: lvl >= 100 ? need : rem, need: need };
+}
+function checkLevelUp() {
+if (gameMode === 'duel') return;
+var newLevel = getLevelProgress(score).lvl;
+if (newLevel > level) {
+level = newLevel; if (level > (gStats.maxLvl || 1)) gStats.maxLvl = level;
+playTone(500, 'sine', 0.4, 1000);
+if ((gameMode === 'classic' || gameMode === 'surv') && level % 3 === 0 && bosses.length === 0) spawnBoss(false);
+if (enemies.length < 22) spawnEnemy(level % 3 === 1 ? 'sniper' : (level % 2 === 0 ? 'hunter' : 'dasher'));
+openInGameLevelUp();
+}
+}
+function damageEnemy(en, dmg) {
+if (!en) return;
+en.hp -= dmg; addPopup(en.x + 13, en.y - 6, '-' + dmg, '#ffffff');
+if (en.hp <= 0) {
+combo = Math.min(3, +(combo + 0.1).toFixed(1)); comboTimer = 240;
+var pts = Math.round(4 * combo);
+ score += pts; gStats.kills = (gStats.kills || 0) + 1;
+addPopup(en.x + 13, en.y - 18, '+' + pts, '#ffd700');
+playTone(420, 'square', 0.14, 800); addParticles(en.x + 13, en.y + 13, '#ffd700', 8);
+var np = getSafePos(28, true); en.x = np.x; en.y = np.y; en.hp = en.maxHp; en.frozen = 0;
+checkLevelUp();
+}
+}
+function damageBoss(targetBoss, dmg) {
+var idx = bosses.indexOf(targetBoss); if (idx === -1) return;
+targetBoss.hp -= dmg; addPopup(targetBoss.x + targetBoss.s * 0.5, targetBoss.y - 10, '-' + dmg, '#ffaa00');
+if (targetBoss.hp <= 0) {
+var isDuel = targetBoss.type === 'duel_poly', bRew = isDuel ? targetBoss.reward : 100;
+score += bRew; bossesKilled++; gStats.bosses = (gStats.bosses || 0) + 1;
+hitstopTimer = 14; flashAlpha = 0.45; addShake(10, 20);
+bosses.splice(idx, 1); bossLasers = [];
+if (isDuel) {
+bank += bRew;
+var wt = 'ПОБЕДА НАД 3D-БОССОМ: ' + targetBoss.name + '!';
+if (targetBoss.duelIdx === 5) { if (duelTrophies < 100) duelTrophies++; duelUnlocked = 1; wt = 'ЧЕМПИОН 3D! +1 КУБОК (' + duelTrophies + '/100 🏆)!'; }
+else if (targetBoss.duelIdx >= duelUnlocked) duelUnlocked = targetBoss.duelIdx + 1;
+saveProgress(); finishRound(wt, bRew); return;
+}
+checkLevelUp();
+}
+}
+function takePlayerDamage(amount) {
+if (state !== 'play') return;
+addShake(5, 10);
+if (!hasHpBar()) { score = Math.max(0, score - amount); addPopup(p.x, p.y - 22, '-' + amount, '#ff4444'); return; }
+p.hp = Math.max(0, p.hp - amount); addPopup(p.x, p.y - 22, '-' + amount + ' HP', '#ff3344');
+if (p.hp <= 0) finishRound('3D-ТАНК УНИЧТОЖЕН!');
+}
+function finishRound(customTitle, fixedBonus) {
+if (state === 'end') return;
+state = 'end'; mouse.down = false; keys = {}; updateTouchUI();
+document.getElementById('pause-hud-btn').style.display = 'none';
+var earned = gameMode === 'duel' ? (fixedBonus || 0) : Math.round(score * (diff === 'hard' ? 1.5 : 1));
+if (gameMode !== 'duel') bank += earned;
+if (gameMode === 'raid' && customTitle && customTitle.indexOf('БАЗА') !== -1) gStats.raids = (gStats.raids || 0) + 1;
+if (gameMode === 'coop') gStats.coops = (gStats.coops || 0) + 1;
+saveProgress();
+var endScreen = document.getElementById('m-end'); endScreen.innerHTML = '';
+var h1 = document.createElement('h1'); h1.style.color = '#ffd700'; h1.style.fontSize = '28px'; h1.textContent = customTitle || 'РАУНД ЗАВЕРШЁН!'; endScreen.appendChild(h1);
+var info = document.createElement('div'); info.style.fontSize = '18px'; info.innerHTML = 'Очки: ' + score + ' | В банк: +' + earned + ''; endScreen.appendChild(info);
+if (gameMode === 'duel') {
+var bd = document.createElement('button'); bd.style.marginTop = '10px'; bd.style.borderColor = '#ff3366'; bd.textContent = 'К выбору 3D-боссов';
+bd.onclick = function() { endScreen.style.display = 'none'; openBossDuelMenu(); }; endScreen.appendChild(bd);
+}
+var bm = document.createElement('button'); bm.style.marginTop = '8px'; bm.style.borderColor = '#00ff88'; bm.textContent = 'В главное меню';
+bm.onclick = function() { showMenu(); }; endScreen.appendChild(bm);
+endScreen.style.display = 'flex';
+}
+function startGame() {
+if (document.activeElement) document.activeElement.blur();
+document.getElementById('m-menu').style.display = 'none'; document.getElementById('m-duel').style.display = 'none';
+document.getElementById('pause-hud-btn').style.display = 'block';
+resizeCanvas(); refreshCosmeticsCache();
+items = []; enemies = []; pBullets = []; fireballs = []; eBullets = []; laserBeams = []; warnBeams = []; bossLasers = []; bossMeteors = []; blackHoles = []; bosses = []; drones = []; particles = []; popups = [];
+if (gameMode === 'duel') currentMap = duelArenaMap;
+else if (gameMode === 'raid') currentMap = raidMaps.find(Boolean);
+else currentMap = arenaMaps[Math.floor(Math.random() * arenaMaps.length)];
+MW = currentMap.w; MH = currentMap.h;
+score = 0; level = 1; combo = 1; bossesKilled = 0;
+matchBuffs = { dmg: 0, spdStacks: 0, maxHpBonus: 0, fireCdReduce: 0, critChance: 0, vampirism: 0, armor: 0, ultCdMult: 1, magnetBonus: 0, doubleShot: false };
+time = gameMode === 'surv' ? 1800 : (gameMode === 'rush' ? 90 : ((gameMode === 'raid' || gameMode === 'coop') ? 300 : 150));
+var st = getPlayerStats(); p.maxHp = st.maxSurvivalHp; p.hp = st.maxSurvivalHp;
+if (gameMode === 'duel') { p.x = MW * 0.5; p.y = MH * 0.78; }
+else if (gameMode === 'raid') { p.x = currentMap.start.x; p.y = currentMap.start.y; }
+else { var pPos = getSafePos(36, false); p.x = pPos.x; p.y = pPos.y; }
+p.vx = 0; p.vy = 0; p.shield = 0; p.dashTime = 0; p.dashCd = 0; p.fireCd = 0; p.fbCd = 0;
+p2.x = p.x + 60; p2.y = p.y; p2.vx = 0; p2.vy = 0; p2.shield = 0; p2.dashTime = 0; p2.dashCd = 0; p2.fireCd = 0;
+for (var d = 0; d < st.droneCount; d++) drones.push({ x: p.x, y: p.y, fireCd: d * 10 });
+if (gameMode === 'duel') spawnDuelBoss(selectedDuelBoss);
+else {
+for (var i = 0; i < 32; i++) spawnItem('coin');
+for (var g = 0; g < 6; g++) spawnItem('gem');
+for (var j = 0; j < 14; j++) spawnEnemy(j % 3 === 0 ? 'hunter' : 'red');
+}
+state = 'play'; updateTouchUI(); playMusic();
+}
+setInterval(function() {
+if (state === 'play') {
+time--;
+if (gameMode !== 'duel' && items.length < 36) spawnItem('coin');
+if (time <= 0) finishRound('ВРЕМЯ ВЫШЛО!');
+}
+}, 1000);
+function spawnBullet3D(x, y, ang, dmg, isPlayer, spdOverride) {
+  var col = isPlayer ? ((upg.damage || 0) >= 10 ? '#ff00aa' : '#00ffff') : '#ff3377';
+  if (isPlayer) pBullets.push({ x: x, y: y, vx: Math.cos(ang) * 13.5, vy: Math.sin(ang) * 13.5, angle: ang, dmg: dmg, bounces: (upg.ricochet || 0) > 0 ? 1 : 0, life: 80, color: col });
+  else {
+    var eSpd = spdOverride || (gameMode === 'duel' ? 7.6 : 6.8);
+    eBullets.push({ x: x, y: y, vx: Math.cos(ang) * eSpd, vy: Math.sin(ang) * eSpd, dmg: dmg || 25, life: 240, color: col });
+  }
+}
+function updateDuelBossAI(boss) {
+  var idx = boss.duelIdx, cx = boss.x + boss.s * 0.5, cy = boss.y + boss.s * 0.5;
+  var isEnraged = boss.hp <= boss.maxHp * 0.5;
+  var angToP = Math.atan2(p.y - cy, p.x - cx);
+  if (isEnraged && !boss.announcedRage) { boss.announcedRage = true; showBanner(boss.name + ' В ЯРОСТИ! СКОРОСТЬ x1.5!'); addShake(8, 18); }
+
+  if (idx === 1) {
+    // 1. ПЕНТАГОН: быстрый полёт + двойная спираль + прицельные веера в игрока
+    boss.rotAngle += isEnraged ? 0.055 : 0.038;
+    var tx = MW * 0.5 + Math.cos(boss.timer * 0.028) * 380, ty = MH * 0.34 + Math.sin(boss.timer * 0.035) * 180;
+    boss.x += (tx - cx) * 0.04; boss.y += (ty - cy) * 0.04;
+    if (boss.timer % (isEnraged ? 11 : 15) === 0 && eBullets.length < 180) {
+      for (var a = 0; a < 5; a++) {
+        spawnBullet3D(cx, cy, boss.rotAngle + (Math.PI * 2 / 5) * a, 30, false, 7.4);
+        if (isEnraged) spawnBullet3D(cx, cy, -boss.rotAngle + (Math.PI * 2 / 5) * a, 30, false, 6.4);
+      }
+    }
+    if (boss.timer % 65 === 0 && eBullets.length < 180) {
+      for (var f = -2; f <= 2; f++) spawnBullet3D(cx, cy, angToP + f * 0.14, 35, false, 9.2);
+    }
+  } else if (idx === 2) {
+    // 2. ГЕКСАГОН: перекрёстные стены пуль (сверху и сбоку) + 12-лучевые кольца
+    boss.rotAngle -= 0.035;
+    if (boss.timer % (isEnraged ? 68 : 85) === 15 && eBullets.length < 190) {
+      var gapX = 220 + Math.random() * (MW - 440);
+      for (var wx = 50; wx <= MW - 50; wx += 52) {
+        if (Math.abs(wx - gapX) > 105) eBullets.push({ x: wx, y: 25, vx: 0, vy: isEnraged ? 6.2 : 5.2, dmg: 35, life: 260, color: '#00e5ff' });
+      }
+    }
+    if (isEnraged && boss.timer % 110 === 55 && eBullets.length < 190) {
+      var gapY = 200 + Math.random() * (MH - 400);
+      for (var wy = 50; wy <= MH - 50; wy += 52) {
+        if (Math.abs(wy - gapY) > 105) eBullets.push({ x: 25, y: wy, vx: 5.5, vy: 0, dmg: 35, life: 280, color: '#00e5ff' });
+      }
+    }
+    if (boss.timer % 48 === 0 && eBullets.length < 190) {
+      for (var c2 = 0; c2 < 12; c2++) spawnBullet3D(cx, cy, boss.rotAngle + (Math.PI * 2 / 12) * c2, 30, false, 7.2);
+    }
+  } else if (idx === 3) {
+    // 3. ГЕПТАГОН: 7 смертельных 3D-лазеров (в ярости меняют направление!) + спиральный шквал
+    var dir = (isEnraged && Math.floor(boss.timer / 180) % 2 === 1) ? -1 : 1;
+    boss.rotAngle += (isEnraged ? 0.025 : 0.017) * dir;
+    if (bossLasers.length === 0) {
+      for (var c = 0; c < 7; c++) bossLasers.push({ boss: boss, cornerIdx: c, totalCorners: 7, x1: cx, y1: cy, x2: cx, y2: cy, warnFrames: 60, dmgCd: 0, color: '#33ff77' });
+    }
+    if (boss.timer % 20 === 0 && eBullets.length < 180) {
+      for (var a3 = 0; a3 < 7; a3++) spawnBullet3D(cx, cy, -boss.rotAngle + (Math.PI * 2 / 7) * a3, 30, false, 7.2);
+    }
+  } else if (idx === 4) {
+    // 4. ОКТАГОН: безумный скоростной таран по арене + шквал 8-лучевых залпов
+    if (boss.timer % 320 === 60) {
+      boss.chaosTimer = 240;
+      var spd4 = isEnraged ? 9.5 : 7.8;
+      boss.chaosVx = Math.cos(angToP) * spd4; boss.chaosVy = Math.sin(angToP) * spd4;
+      showBanner('ОКТАГОН ВПАЛ В БЕЗУМИЕ!');
+    }
+    if (boss.chaosTimer > 0) {
+      boss.chaosTimer--; boss.rotAngle += 0.14; boss.x += boss.chaosVx; boss.y += boss.chaosVy;
+      var bounced = false;
+      if (boss.x < 45 || boss.x > MW - boss.s - 45) { boss.chaosVx *= -1; bounced = true; }
+      if (boss.y < 45 || boss.y > MH - boss.s - 45) { boss.chaosVy *= -1; bounced = true; }
+      if (bounced && eBullets.length < 190) {
+        addShake(6, 10);
+        for (var b8 = 0; b8 < 10; b8++) spawnBullet3D(cx, cy, (Math.PI * 2 / 10) * b8, 35, false, 7.8);
+      }
+    } else {
+      boss.rotAngle += 0.04;
+      if (boss.timer % (isEnraged ? 12 : 16) === 0 && eBullets.length < 190) {
+        for (var a4 = 0; a4 < 8; a4++) spawnBullet3D(cx, cy, boss.rotAngle + (Math.PI * 2 / 8) * a4, 32, false, 8.0);
+      }
+    }
+  } else if (idx === 5) {
+    // 5. АБСОЛЮТ: град 3D-метеоритов сверху + 12-лучевые звёзды + прицельные тройные залпы
+    boss.rotAngle += isEnraged ? 0.05 : 0.035;
+    var tx5 = MW * 0.5 + Math.cos(boss.timer * 0.022) * 280, ty5 = MH * 0.3 + Math.sin(boss.timer * 0.022) * 120;
+    boss.x += (tx5 - cx) * 0.03; boss.y += (ty5 - cy) * 0.03;
+    if (boss.timer % (isEnraged ? 36 : 48) === 0 && bossMeteors.length < 12) {
+      var mCount = isEnraged ? 3 : 2;
+      for (var mc = 0; mc < mCount; mc++) {
+        bossMeteors.push({ x: Math.max(80, Math.min(MW - 80, p.x + (Math.random() - 0.5) * 380)), y: Math.max(80, Math.min(MH - 80, p.y + (Math.random() - 0.5) * 380)), r: 82, timer: 55, maxTimer: 55 });
+      }
+    }
+    if (boss.timer % (isEnraged ? 15 : 20) === 0 && eBullets.length < 190) {
+      for (var a5 = 0; a5 < 10; a5++) spawnBullet3D(cx, cy, boss.rotAngle + (Math.PI * 2 / 10) * a5, 35, false, 8.2);
+    }
+    if (boss.timer % 55 === 0 && eBullets.length < 190) {
+      for (var s5 = -1; s5 <= 1; s5++) spawnBullet3D(cx, cy, angToP + s5 * 0.12, 40, false, 9.8);
+    }
+  }
+}
+function updatePhysics() {
+var autoFireEnabled = true;
+if (p.shield > 0) p.shield--; if (p.dashTime > 0) p.dashTime--; if (p.dashCd > 0) p.dashCd--; if (p.fireCd > 0) p.fireCd--; if (p.fbCd > 0) p.fbCd--;
+if (msgTimer > 0) msgTimer--; if (shakeTime > 0) shakeTime--;
+var st = getPlayerStats(), ix = 0, iy = 0;
+if (gameMode === 'coop') { if (keys['KeyW']) iy -= 1; if (keys['KeyS']) iy += 1; if (keys['KeyA']) ix -= 1; if (keys['KeyD']) ix += 1; }
+else {
+if (keys[keyBinds.up] || keys['ArrowUp']) iy -= 1; if (keys[keyBinds.down] || keys['ArrowDown']) iy += 1;
+if (keys[keyBinds.left] || keys['ArrowLeft']) ix -= 1; if (keys[keyBinds.right] || keys['ArrowRight']) ix += 1;
+if (touchMove.active) { ix = touchMove.dx; iy = touchMove.dy; }
+}
+if (p.dashTime > 0) { p.vx = p.dashDirX * st.speed * st.dashMult; p.vy = p.dashDirY * st.speed * st.dashMult; }
+else {
+var tvx = 0, tvy = 0;
+if (ix !== 0 || iy !== 0) { var l = Math.max(1, Math.hypot(ix, iy)); tvx = (ix / l) * st.speed; tvy = (iy / l) * st.speed; p.bodyAngle = lerpAngle(p.bodyAngle, Math.atan2(iy, ix), 0.2); }
+p.vx += (tvx - p.vx) * 0.18; p.vy += (tvy - p.vy) * 0.18;
+}
+var nx = p.x + p.vx, ny = p.y + p.vy;
+if (!hitsWall(nx - 15, p.y - 15, 30, 30)) p.x = nx; else p.vx = 0;
+if (!hitsWall(p.x - 15, ny - 15, 30, 30)) p.y = ny; else p.vy = 0;
+clampToArena(p, 18);
+if (gameMode === 'raid' && currentMap.goal && distSq(p.x, p.y, currentMap.goal.x, currentMap.goal.y) < currentMap.goal.r * currentMap.goal.r) {
+finishRound('ПРОРЫВ УСПЕШЕН! БАЗА ДОСТИГНУТА!'); return;
+}
+var isCoop = (gameMode === 'coop');
+var isAuto = isCoop ? true : (st.hasAutoFire && autoFireEnabled && !mouse.down && !touchAim.active);
+var autoT = isAuto ? findNearestTarget(p.x, p.y, 620) : null;
+if (autoT) p.turretAngle = lerpAngle(p.turretAngle, Math.atan2(autoT.y - p.y, autoT.x - p.x), 0.35);
+else if (!touchAim.active && !isCoop) {
+var wp = screenToGround3D(mouse.x, mouse.y);
+p.turretAngle = lerpAngle(p.turretAngle, Math.atan2(wp.y - p.y, wp.x - p.x), mouseSens);
+}
+if (((!isCoop && mouse.down) || autoT !== null) && p.fireCd <= 0) {
+p.fireCd = st.fireCdFrames;
+var dmg = (isAuto && !isCoop) ? Math.max(0.5, st.damage * 0.5) : st.damage;
+spawnBullet3D(p.x + Math.cos(p.turretAngle) * 26, p.y + Math.sin(p.turretAngle) * 26, p.turretAngle, dmg, true);
+if (matchBuffs.doubleShot) spawnBullet3D(p.x + Math.cos(p.turretAngle) * 26, p.y + Math.sin(p.turretAngle) * 26, p.turretAngle + 0.1, dmg, true);
+playTone(750, 'triangle', 0.08, 300);
+}
+if (isCoop) {
+if (p2.shield > 0) p2.shield--; if (p2.dashTime > 0) p2.dashTime--; if (p2.dashCd > 0) p2.dashCd--; if (p2.fireCd > 0) p2.fireCd--;
+var ix2 = 0, iy2 = 0;
+if (keys['ArrowUp']) iy2 -= 1; if (keys['ArrowDown']) iy2 += 1; if (keys['ArrowLeft']) ix2 -= 1; if (keys['ArrowRight']) ix2 += 1;
+if (p2.dashTime > 0) { p2.vx = p2.dashDirX * st.speed * st.dashMult; p2.vy = p2.dashDirY * st.speed * st.dashMult; }
+else {
+var tvx2 = 0, tvy2 = 0;
+if (ix2 !== 0 || iy2 !== 0) { var l2 = Math.max(1, Math.hypot(ix2, iy2)); tvx2 = (ix2 / l2) * st.speed; tvy2 = (iy2 / l2) * st.speed; p2.bodyAngle = lerpAngle(p2.bodyAngle, Math.atan2(iy2, ix2), 0.2); }
+p2.vx += (tvx2 - p2.vx) * 0.18; p2.vy += (tvy2 - p2.vy) * 0.18;
+}
+var nx2 = p2.x + p2.vx, ny2 = p2.y + p2.vy;
+if (!hitsWall(nx2 - 15, p2.y - 15, 30, 30)) p2.x = nx2; else p2.vx = 0;
+if (!hitsWall(p2.x - 15, ny2 - 15, 30, 30)) p2.y = ny2; else p2.vy = 0;
+clampToArena(p2, 18);
+var autoT2 = findNearestTarget(p2.x, p2.y, 620);
+if (autoT2) {
+p2.turretAngle = lerpAngle(p2.turretAngle, Math.atan2(autoT2.y - p2.y, autoT2.x - p2.x), 0.35);
+if (p2.fireCd <= 0) { p2.fireCd = st.fireCdFrames; spawnBullet3D(p2.x + Math.cos(p2.turretAngle) * 26, p2.y + Math.sin(p2.turretAngle) * 26, p2.turretAngle, st.damage, true); }
+}
+}
+droneBaseAngle += 0.05;
+for (var di = 0; di < drones.length; di++) {
+var dr = drones[di], off = (Math.PI * 2 / drones.length) * di;
+dr.x += (p.x + Math.cos(droneBaseAngle + off) * 48 - dr.x) * 0.16;
+dr.y += (p.y + Math.sin(droneBaseAngle + off) * 48 - dr.y) * 0.16;
+    var dt = findNearestTarget(dr.x, dr.y, 550);
+    if (dt) {
+      dr.targetAngle = Math.atan2(dt.y - dr.y, dt.x - dr.x);
+      if (--dr.fireCd <= 0) { dr.fireCd = 24; spawnBullet3D(dr.x, dr.y, dr.targetAngle, 1, true); }
+    } else {
+      dr.targetAngle = p.turretAngle;
+    }
+}
+  var homingActive = ((upg.autoFire || 0) > 0 && autoFireEnabled) || isCoop;
+  for (var pb = pBullets.length - 1; pb >= 0; pb--) {
+    var b = pBullets[pb], ox = b.x, oy = b.y;
+    if (homingActive) {
+      var ht = findNearestTarget(b.x, b.y, 460);
+      if (ht) {
+        var spdB = Math.hypot(b.vx, b.vy) || 13;
+        var curA = Math.atan2(b.vy, b.vx);
+        var desA = Math.atan2(ht.y - b.y, ht.x - b.x);
+        var newA = lerpAngle(curA, desA, 0.14);
+        b.vx = Math.cos(newA) * spdB;
+        b.vy = Math.sin(newA) * spdB;
+        b.angle = newA;
+      }
+    }
+    b.x += b.vx; b.y += b.vy; b.life--;
+if (b.life <= 0 || !isInsideArena(b.x, b.y, 2) || hitsWall(b.x - 3, b.y - 3, 6, 6)) {
+if (b.bounces > 0 && (upg.ricochet || 0) > 0) {
+b.bounces--;
+if (!isInsideArena(ox + b.vx, oy, 2) || hitsWall(ox + b.vx - 3, oy - 3, 6, 6)) b.vx *= -1; else b.vy *= -1;
+b.angle = Math.atan2(b.vy, b.vx);
+} else { pBullets.splice(pb, 1); }
+continue;
+}
+var hit = false;
+for (var ei = enemies.length - 1; ei >= 0; ei--) {
+if (distSq(b.x, b.y, enemies[ei].x + 13, enemies[ei].y + 13) < 340) { damageEnemy(enemies[ei], b.dmg); hit = true; break; }
+}
+if (!hit) {
+for (var bi = bosses.length - 1; bi >= 0; bi--) {
+var bs = bosses[bi], bRad = bs.s * 0.52;
+if (distSq(b.x, b.y, bs.x + bs.s * 0.5, bs.y + bs.s * 0.5) < bRad * bRad) { damageBoss(bs, b.dmg); hit = true; break; }
+}
+}
+if (hit) pBullets.splice(pb, 1);
+}
+for (var fi = fireballs.length - 1; fi >= 0; fi--) {
+var fb = fireballs[fi]; fb.x += fb.vx; fb.y += fb.vy; fb.life--;
+var hitWallOrEnd = (fb.life <= 0 || !isInsideArena(fb.x, fb.y, 4) || hitsWall(fb.x - 8, fb.y - 8, 16, 16));
+if (!hitWallOrEnd) {
+for (var ei3 = 0; ei3 < enemies.length; ei3++) if (distSq(fb.x, fb.y, enemies[ei3].x + 13, enemies[ei3].y + 13) < 900) { hitWallOrEnd = true; break; }
+for (var bi3 = 0; bi3 < bosses.length; bi3++) if (distSq(fb.x, fb.y, bosses[bi3].x + bosses[bi3].s * 0.5, bosses[bi3].y + bosses[bi3].s * 0.5) < 3600) { hitWallOrEnd = true; break; }
+}
+if (hitWallOrEnd) {
+addParticles(fb.x, fb.y, fb.kind === 'frost' ? '#00ffff' : '#ff5500', 18);
+for (var ei2 = enemies.length - 1; ei2 >= 0; ei2--) {
+if (distSq(fb.x, fb.y, enemies[ei2].x + 13, enemies[ei2].y + 13) < 16900) {
+if (fb.kind === 'frost') enemies[ei2].frozen = 240;
+damageEnemy(enemies[ei2], fb.dmg);
+}
+}
+for (var bi2 = bosses.length - 1; bi2 >= 0; bi2--) { var bs2 = bosses[bi2]; if (distSq(fb.x, fb.y, bs2.x + bs2.s * 0.5, bs2.y + bs2.s * 0.5) < 25000) damageBoss(bs2, fb.dmg); }
+fireballs.splice(fi, 1);
+}
+}
+for (var bhi = blackHoles.length - 1; bhi >= 0; bhi--) {
+var bh = blackHoles[bhi];
+if (bh.life % 15 === 0) {
+for (var ei4 = enemies.length - 1; ei4 >= 0; ei4--) if (distSq(bh.x, bh.y, enemies[ei4].x + 13, enemies[ei4].y + 13) < 25600) damageEnemy(enemies[ei4], bh.dmg);
+for (var bi4 = bosses.length - 1; bi4 >= 0; bi4--) if (distSq(bh.x, bh.y, bosses[bi4].x + bosses[bi4].s * 0.5, bosses[bi4].y + bosses[bi4].s * 0.5) < 32000) damageBoss(bosses[bi4], bh.dmg);
+}
+if (--bh.life <= 0) blackHoles.splice(bhi, 1);
+}
+for (var lbi = laserBeams.length - 1; lbi >= 0; lbi--) if (--laserBeams[lbi].life <= 0) laserBeams.splice(lbi, 1);
+for (var bli = bossLasers.length - 1; bli >= 0; bli--) {
+var bl = bossLasers[bli];
+if (!bl.boss || bl.boss.hp <= 0) { bossLasers.splice(bli, 1); continue; }
+var bcx = bl.boss.x + bl.boss.s * 0.5, bcy = bl.boss.y + bl.boss.s * 0.5;
+var cAng = (bl.boss.rotAngle || 0) + (Math.PI * 2 / bl.totalCorners) * bl.cornerIdx;
+bl.x1 = bcx + Math.cos(cAng) * (bl.boss.s * 0.5); bl.y1 = bcy + Math.sin(cAng) * (bl.boss.s * 0.5);
+var cl = clipRayToWalls(bl.x1, bl.y1, bcx + Math.cos(cAng) * 1400, bcy + Math.sin(cAng) * 1400);
+bl.x2 = cl.x; bl.y2 = cl.y;
+if (bl.warnFrames > 0) bl.warnFrames--;
+else if (p.dashTime === 0 && p.shield === 0 && distToSegmentSq(p.x, p.y, bl.x1, bl.y1, bl.x2, bl.y2) < 400 && bl.dmgCd <= 0) {
+bl.dmgCd = 28; takePlayerDamage(18);
+}
+if (bl.dmgCd > 0) bl.dmgCd--;
+}
+for (var bmi = bossMeteors.length - 1; bmi >= 0; bmi--) {
+var bm = bossMeteors[bmi];
+if (--bm.timer <= 0) {
+addParticles(bm.x, bm.y, '#ff2244', 18); addShake(7, 12);
+if (p.dashTime === 0 && p.shield === 0 && distSq(p.x, p.y, bm.x, bm.y) < bm.r * bm.r) takePlayerDamage(25);
+bossMeteors.splice(bmi, 1);
+}
+}
+var magSq = st.magnetRange * st.magnetRange;
+for (var i = items.length - 1; i >= 0; i--) {
+var it = items[i];
+var d1Sq = distSq(p.x, p.y, it.x, it.y);
+var d2Sq = isCoop ? distSq(p2.x, p2.y, it.x, it.y) : 99999999;
+var nearP = d2Sq < d1Sq ? p2 : p, dItSq = Math.min(d1Sq, d2Sq);
+if (it.type === 'coin' && dItSq < magSq && dItSq > 100) {
+var mAng = Math.atan2(nearP.y - it.y, nearP.x - it.x);
+it.x += Math.cos(mAng) * 5.5; it.y += Math.sin(mAng) * 5.5;
+}
+if (dItSq < 900) {
+if (it.type === 'coin') { combo = Math.min(3, +(combo + 0.05).toFixed(2)); comboTimer = 240;
+score += Math.max(1, Math.round(1 * combo));
+ playTone(600, 'triangle', 0.1, 900); spawnItem('coin'); }
+else if (it.type === 'gem') { score += 5; if (hasHpBar()) p.hp = Math.min(p.maxHp, p.hp + 25); playTone(800, 'sine', 0.2, 1300); }
+else { nearP.shield = st.shieldFrames; }
+items.splice(i, 1); checkLevelUp();
+}
+}
+  for (var k = enemies.length - 1; k >= 0; k--) {
+    var e = enemies[k], ex = e.x + 13, ey = e.y + 13;
+    if (e.frozen > 0) { e.frozen--; continue; }
+    var angToP = Math.atan2(p.y - ey, p.x - ex);
+    var multSpd = getDiffSpeedMult();
+
+    if (e.type === 'hunter' || e.type === 'dasher') {
+      // Преследуют игрока только фиолетовые (hunter) и жёлтые (dasher)
+      var chaseSpd = (e.type === 'dasher' ? 3.2 : 2.3) * multSpd;
+      e.angle = angToP;
+      var nxE = e.x + Math.cos(angToP) * chaseSpd, nyE = e.y + Math.sin(angToP) * chaseSpd;
+      if (!hitsWall(nxE, e.y, 26, 26)) e.x = nxE;
+      if (!hitsWall(e.x, nyE, 26, 26)) e.y = nyE;
+    } else if (e.type === 'sniper') {
+      // Снайпер держит дистанцию и стреляет
+      e.angle = angToP;
+      if (distSq(p.x, p.y, ex, ey) > 190000) {
+        var nxS = e.x + Math.cos(angToP) * 1.8 * multSpd, nyS = e.y + Math.sin(angToP) * 1.8 * multSpd;
+        if (!hitsWall(nxS, e.y, 26, 26)) e.x = nxS;
+        if (!hitsWall(e.x, nyS, 26, 26)) e.y = nyS;
+      }
+      if (++e.shootTimer >= 135 && eBullets.length < 110) {
+        e.shootTimer = 0; spawnBullet3D(ex, ey, angToP, 20, false);
+      }
+    } else {
+      // Красные враги не преследуют, а катаются по арене с отскоком и «пуляются»
+      e.x += e.vx;
+      if (!isInsideArena(e.x + 13, e.y + 13, 18) || hitsWall(e.x, e.y, 26, 26)) { e.x -= e.vx; e.vx *= -1; }
+      e.y += e.vy;
+      if (!isInsideArena(e.x + 13, e.y + 13, 18) || hitsWall(e.x, e.y, 26, 26)) { e.y -= e.vy; e.vy *= -1; }
+      e.angle = angToP;
+      if (++e.shootTimer >= 105 && distSq(p.x, p.y, ex, ey) < 520000 && eBullets.length < 110) {
+        e.shootTimer = 0;
+        spawnBullet3D(ex + Math.cos(angToP) * 16, ey + Math.sin(angToP) * 16, angToP, 12, false);
+      }
+    }
+    clampToArena(e, 16);
+
+    if (p.dashTime === 0 && distSq(p.x, p.y, ex, ey) < 625) {
+      if (p.shield === 0) takePlayerDamage(15);
+      var np2 = getSafePos(28, true); e.x = np2.x; e.y = np2.y;
+    }
+  }
+  for (var bi5 = bosses.length - 1; bi5 >= 0; bi5--) {
+    var boss = bosses[bi5]; boss.timer++;
+    if (boss.type === 'duel_poly') updateDuelBossAI(boss);
+    else {
+      var bcx2 = boss.x + boss.s * 0.5, bcy2 = boss.y + boss.s * 0.5;
+      var angT = Math.atan2(p.y - bcy2, p.x - bcx2);
+      boss.x += Math.cos(angT) * 1.45; boss.y += Math.sin(angT) * 1.45;
+      clampToArena(boss, boss.s * 0.5);
+      boss.rotAngle += 0.045;
+      if (boss.timer % 18 === 0 && eBullets.length < 160) for (var a = 0; a < 8; a++) spawnBullet3D(bcx2, bcy2, boss.rotAngle + (Math.PI * 2 / 8) * a, 25, false, 7.2);
+      if (boss.timer % 55 === 0 && eBullets.length < 160) for (var t = -1; t <= 1; t++) spawnBullet3D(bcx2, bcy2, angT + t * 0.14, 30, false, 8.8);
+    }
+  }
+
+  for (var eb = eBullets.length - 1; eb >= 0; eb--) {
+    var bul = eBullets[eb]; bul.x += bul.vx; bul.y += bul.vy;
+    if (--bul.life <= 0 || !isInsideArena(bul.x, bul.y, 4) || hitsWall(bul.x - 4, bul.y - 4, 8, 8)) { eBullets.splice(eb, 1); continue; }
+    var hitDmg = bul.dmg || 25;
+    if (distSq(p.x, p.y, bul.x, bul.y) < 361) { eBullets.splice(eb, 1); if (p.shield === 0 && p.dashTime === 0) takePlayerDamage(hitDmg); }
+    else if (isCoop && distSq(p2.x, p2.y, bul.x, bul.y) < 361) { eBullets.splice(eb, 1); if (p2.shield === 0 && p2.dashTime === 0) takePlayerDamage(hitDmg); }
+  }
+for (var pt = particles.length - 1; pt >= 0; pt--) {
+var part = particles[pt]; part.x += part.vx; part.y += part.vy; part.z += part.vz; part.vz -= 0.35;
+if (--part.life <= 0) particles.splice(pt, 1);
+}
+}
+function draw3DTankWebGL(tObj, skinObj) {
+  var c1 = skinObj.c1 === 'rainbow' ? [0.15, 0.95, 1.0] : hexToRGB(skinObj.c1);
+  var c2 = hexToRGB(skinObj.c2), core = hexToRGB(skinObj.core);
+  if (tObj.dashTime > 0) c1 = [0.1, 1.0, 1.0];
+
+  var sinB = Math.sin(tObj.bodyAngle), cosB = Math.cos(tObj.bodyAngle);
+  var spd = Math.hypot(tObj.vx, tObj.vy);
+  var hpLvl = upg.maxHp || 0;
+  var gunLvl = (upg.damage || 0) + matchBuffs.dmg;
+  var spdLvl = upg.speed || 0;
+
+  // 1. Тень под 3D-танком
+  drawMesh3D(boxGeo, tObj.x + 3, 0.3, tObj.y + 4, -tObj.bodyAngle, 44, 0.4, 40, [0.02, 0.02, 0.04], true, 0.55);
+
+  // 2. 3D-АУРА на земле под танком
+  if (cachedAura && cachedAura.id !== 'none' && gameMode !== 'coop') {
+    var aCol = hexToRGB(cachedAura.color), aRot = Date.now() * 0.0025;
+    for (var ai = 0; ai < 8; ai++) {
+      var aa = aRot + (Math.PI / 4) * ai;
+      drawMesh3D(boxGeo, tObj.x + Math.cos(aa) * 32, 1.5, tObj.y + Math.sin(aa) * 32, -aa, 8, 2, 3, aCol, true, 0.9);
+    }
+  }
+
+  // 3. Детализированные гусеницы с 32x32 текстурой траков
+  var trackW = spdLvl >= 4 ? 44 : 40;
+  drawMesh3D(boxGeo, tObj.x - sinB * 15.5, 5, tObj.y + cosB * 15.5, -tObj.bodyAngle, trackW, 9.5, 8, [0.55, 0.60, 0.70], false, 1.0, texTrack, 2.0);
+  drawMesh3D(boxGeo, tObj.x + sinB * 15.5, 5, tObj.y - cosB * 15.5, -tObj.bodyAngle, trackW, 9.5, 8, [0.55, 0.60, 0.70], false, 1.0, texTrack, 2.0);
+  drawMesh3D(boxGeo, tObj.x - sinB * 15.5, 10.2, tObj.y + cosB * 15.5, -tObj.bodyAngle, trackW - 2, 2, 9, c2, false, 1.0, texArmor, 1.0);
+  drawMesh3D(boxGeo, tObj.x + sinB * 15.5, 10.2, tObj.y - cosB * 15.5, -tObj.bodyAngle, trackW - 2, 2, 9, c2, false, 1.0, texArmor, 1.0);
+
+  // 4. Бронекорпус с 32x32 текстурой бронелистов и фарами
+  drawMesh3D(boxGeo, tObj.x, 6.5, tObj.y, -tObj.bodyAngle, 39, 7, 23, c2, false, 1.0, texArmor, 1.0);
+  drawMesh3D(boxGeo, tObj.x - cosB * 1, 11.8, tObj.y - sinB * 1, -tObj.bodyAngle, 34, 6.5, 21, c1, false, 1.0, texArmor, 1.0);
+  drawMesh3D(boxGeo, tObj.x + cosB * 17, 9.5, tObj.y + sinB * 17, -tObj.bodyAngle, 7, 5, 19, c1, false, 1.0, texArmor, 1.0);
+  drawMesh3D(boxGeo, tObj.x + cosB * 20.5 - sinB * 6.5, 8.5, tObj.y + sinB * 20.5 + cosB * 6.5, -tObj.bodyAngle, 2, 3, 3.5, [1.0, 1.0, 1.0], true);
+  drawMesh3D(boxGeo, tObj.x + cosB * 20.5 + sinB * 6.5, 8.5, tObj.y + sinB * 20.5 - cosB * 6.5, -tObj.bodyAngle, 2, 3, 3.5, [1.0, 1.0, 1.0], true);
+
+  // 5. Моторный отсек сзади и реактивные сопла
+  drawMesh3D(boxGeo, tObj.x - cosB * 13, 14, tObj.y - sinB * 13, -tObj.bodyAngle, 10, 7, 17, c2, false, 1.0, texArmor, 1.0);
+  var flame = tObj.dashTime > 0 ? 20 : (spd > 0.5 ? 7 + Math.sin(Date.now() * 0.04) * 3 : 2.5);
+  var fCol = tObj.dashTime > 0 ? [0.0, 1.0, 1.0] : [1.0, 0.45, 0.0];
+  drawMesh3D(boxGeo, tObj.x - cosB * (20 + flame * 0.5) - sinB * 6, 9, tObj.y - sinB * (20 + flame * 0.5) + cosB * 6, -tObj.bodyAngle, flame, 4, 4, fCol, true);
+  drawMesh3D(boxGeo, tObj.x - cosB * (20 + flame * 0.5) + sinB * 6, 9, tObj.y - sinB * (20 + flame * 0.5) - cosB * 6, -tObj.bodyAngle, flame, 4, 4, fCol, true);
+
+  // 6. Эволюция брони от прокачки
+  if (hpLvl >= 1) {
+    drawMesh3D(boxGeo, tObj.x - sinB * 20.2, 8.5, tObj.y + cosB * 20.2, -tObj.bodyAngle, 28, 7.5, 2.5, c2, false, 1.0, texArmor, 1.0);
+    drawMesh3D(boxGeo, tObj.x + sinB * 20.2, 8.5, tObj.y - cosB * 20.2, -tObj.bodyAngle, 28, 7.5, 2.5, c2, false, 1.0, texArmor, 1.0);
+  }
+  if (hpLvl >= 8) {
+    drawMesh3D(boxGeo, tObj.x + cosB * 22.5, 7.5, tObj.y + sinB * 22.5, -tObj.bodyAngle, 6, 8.5, 32, c2, false, 1.0, texArmor, 1.0);
+  }
+
+    // 7. Восьмигранная бронебашня, командирский люк, реактор и орудие
+  var turretScale = gunLvl >= 5 ? 25 : 22;
+  drawMesh3D(prismGeos[8], tObj.x, 19.5, tObj.y, -tObj.turretAngle, turretScale, 9, turretScale, c1, false, 1.0, texArmor, 1.0);
+  drawMesh3D(prismGeos[8], tObj.x, 24.5, tObj.y, -tObj.turretAngle, turretScale * 0.65, 2.5, turretScale * 0.65, c2, false, 1.0, texArmor, 1.0);
+  drawMesh3D(prismGeos[6], tObj.x, 26.5, tObj.y, Date.now() * 0.004, 9, 3, 9, core, true);
+
+  var cosT = Math.cos(tObj.turretAngle), sinT = Math.sin(tObj.turretAngle);
+  drawMesh3D(boxGeo, tObj.x + cosT * 11.5, 19.5, tObj.y + sinT * 11.5, -tObj.turretAngle, 8.5, 7.5, 12, c2, false, 1.0, texArmor, 1.0);
+
+  if (gunLvl >= 9) {
+    // Четверной гига-рельсотрон + боковые ракетные установки
+    drawMesh3D(boxGeo, tObj.x - sinT * 13.5, 20, tObj.y + cosT * 13.5, -tObj.turretAngle, 14, 6, 5, c2, false, 1.0, texArmor, 1.0);
+    drawMesh3D(boxGeo, tObj.x + sinT * 13.5, 20, tObj.y - cosT * 13.5, -tObj.turretAngle, 14, 6, 5, c2, false, 1.0, texArmor, 1.0);
+    drawMesh3D(boxGeo, tObj.x + cosT * 22 - sinT * 4.5, 19.5, tObj.y + sinT * 22 + cosT * 4.5, -tObj.turretAngle, 28, 3.4, 3.4, c2, false, 1.0, texArmor, 1.0);
+    drawMesh3D(boxGeo, tObj.x + cosT * 22 + sinT * 4.5, 19.5, tObj.y + sinT * 22 - cosT * 4.5, -tObj.turretAngle, 28, 3.4, 3.4, c2, false, 1.0, texArmor, 1.0);
+    drawMesh3D(boxGeo, tObj.x + cosT * 20, 19.5, tObj.y + sinT * 20, -tObj.turretAngle, 25, 2.5, 3, core, true);
+  } else if (gunLvl >= 5) {
+    // Двойной плазменный рельсотрон
+    drawMesh3D(boxGeo, tObj.x + cosT * 21 - sinT * 4.2, 19.5, tObj.y + sinT * 21 + cosT * 4.2, -tObj.turretAngle, 25, 3.4, 3.4, c2, false, 1.0, texArmor, 1.0);
+    drawMesh3D(boxGeo, tObj.x + cosT * 21 + sinT * 4.2, 19.5, tObj.y + sinT * 21 - cosT * 4.2, -tObj.turretAngle, 25, 3.4, 3.4, c2, false, 1.0, texArmor, 1.0);
+    drawMesh3D(boxGeo, tObj.x + cosT * 19, 19.5, tObj.y + sinT * 19, -tObj.turretAngle, 21, 2, 2.5, core, true);
+  } else {
+    // Усиленный ствол с термокожухом и дульным тормозом
+    drawMesh3D(boxGeo, tObj.x + cosT * 19, 19.5, tObj.y + sinT * 19, -tObj.turretAngle, 22, 4.8, 4.8, c2, false, 1.0, texArmor, 1.0);
+    drawMesh3D(boxGeo, tObj.x + cosT * 30, 19.5, tObj.y + sinT * 30, -tObj.turretAngle, 5.5, 6.8, 6.8, core, true);
+  }
+
+  // 8. ПОНЯТНЫЙ ЭНЕРГОЩИТ: 6 ярко-зелёных силовых барьеров вращаются вокруг танка
+  if (tObj.shield > 0) {
+    var shRot = Date.now() * 0.005;
+    for (var si = 0; si < 6; si++) {
+      var sa = shRot + (Math.PI / 3) * si;
+      drawMesh3D(boxGeo, tObj.x + Math.cos(sa) * 32, 16, tObj.y + Math.sin(sa) * 32, -sa, 3.5, 16, 18, [0.0, 1.0, 0.55], true, 0.85);
+    }
+  }
+}
+function renderWebGL3D() {
+gl.clearColor(0.04, 0.05, 0.08, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+projMat = mat4Perspective(44 * Math.PI / 180, VW / VH, 20, 4500);
+viewMat = mat4LookAt(camPos.x, camPos.y, camPos.z, camTarget.x, camTarget.y, camTarget.z);
+vpMat = mat4Mul(projMat, viewMat);
+// Горизонтальный 3D-пол арены и неоновые борта
+  var bgRGB = hexToRGB(currentMap.bg);
+  drawMesh3D(boxGeo, MW * 0.5, -4, MH * 0.5, 0, MW, 8, MH, bgRGB, false, 1.0, texFloor, Math.round(MW / 120));
+var lineRGB = hexToRGB(currentMap.line);
+for (var gx = 0; gx <= MW; gx += 250) drawMesh3D(boxGeo, gx, 0.3, MH * 0.5, 0, 3, 0.6, MH, lineRGB, true);
+for (var gz = 0; gz <= MH; gz += 250) drawMesh3D(boxGeo, MW * 0.5, 0.3, gz, 0, MW, 0.6, 3, lineRGB, true);
+// Борта по периметру
+drawMesh3D(boxGeo, MW * 0.5, 14, -8, 0, MW + 20, 28, 16, [1.0, 0.2, 0.35], false);
+drawMesh3D(boxGeo, MW * 0.5, 14, MH + 8, 0, MW + 20, 28, 16, [1.0, 0.2, 0.35], false);
+drawMesh3D(boxGeo, -8, 14, MH * 0.5, 0, 16, 28, MH + 20, [1.0, 0.2, 0.35], false);
+drawMesh3D(boxGeo, MW + 8, 14, MH * 0.5, 0, 16, 28, MH + 20, [1.0, 0.2, 0.35], false);
+// Объёмные 3D-стены с неоновой окантовкой сверху
+  var wCol = hexToRGB(currentMap.wallColor), wTop = hexToRGB(currentMap.wallTop);
+  for (var w = 0; w < currentMap.walls.length; w++) {
+    var wl = currentMap.walls[w];
+    drawMesh3D(boxGeo, wl.x + wl.w * 0.5, 22, wl.y + wl.h * 0.5, 0, wl.w, 44, wl.h, wCol, false, 1.0, texWall, Math.max(1, Math.round(wl.w / 90)));
+    drawMesh3D(boxGeo, wl.x + wl.w * 0.5, 45.5, wl.y + wl.h * 0.5, 0, wl.w - 4, 3, wl.h - 4, wTop, true, 1.0, texArmor, 1.0);
+  }
+  // Финиш Прорыва
+  if (gameMode === 'raid' && currentMap.goal) {
+    drawMesh3D(prismGeos[16], currentMap.goal.x, 1, currentMap.goal.y, Date.now() * 0.002, currentMap.goal.r * 2, 2, currentMap.goal.r * 2, [0.0, 1.0, 0.5], true);
+  }
+
+  // Чёрные дыры (Ульта)
+  for (var bh = 0; bh < blackHoles.length; bh++) {
+    drawMesh3D(prismGeos[16], blackHoles[bh].x, 2, blackHoles[bh].y, Date.now() * 0.01, 140, 3, 140, [0.65, 0.0, 1.0], true);
+    drawMesh3D(prismGeos[8], blackHoles[bh].x, 4, blackHoles[bh].y, -Date.now() * 0.015, 70, 5, 70, [1.0, 0.2, 1.0], true);
+  }
+
+  // Танки игроков
+  draw3DTankWebGL(p, gameMode === 'coop' ? { c1: '#ff2a44', c2: '#660011', core: '#ffaa00' } : cachedShip);
+  if (gameMode === 'coop') draw3DTankWebGL(p2, { c1: '#0099ff', c2: '#003366', core: '#00ffff' });
+
+    // Детализированные боевые 3D-дроны (мини-истребители с крыльями и турбиной)
+  for (var d = 0; d < drones.length; d++) {
+    var dr = drones[d], drY = 30 + Math.sin(Date.now() * 0.008 + d) * 3;
+    var drAng = -(dr.targetAngle || droneBaseAngle);
+    var dCos = Math.cos(dr.targetAngle || droneBaseAngle), dSin = Math.sin(dr.targetAngle || droneBaseAngle);
+    // Фюзеляж дрона
+    drawMesh3D(boxGeo, dr.x, drY, dr.y, drAng, 18, 5, 8, [0.15, 0.25, 0.35], false);
+    // Стреловидные крылья с неоновой кромкой
+    drawMesh3D(boxGeo, dr.x - dCos * 2, drY, dr.y - dSin * 2, drAng, 8, 2, 24, [0.0, 1.0, 0.55], false);
+    // Носовая плазменная пушка и реактивный двигатель сзади
+    drawMesh3D(boxGeo, dr.x + dCos * 10, drY, dr.y + dSin * 10, drAng, 8, 2.5, 2.5, [0.0, 1.0, 1.0], true);
+    drawMesh3D(boxGeo, dr.x - dCos * 11, drY, dr.y - dSin * 11, drAng, 6, 3, 4, [1.0, 0.5, 0.0], true);
+  }
+
+
+  // Вращающиеся 3D-монеты и кристаллы
+  for (var i = 0; i < items.length; i++) {
+    var it = items[i], bob = 12 + Math.sin(Date.now() * 0.006 + it.x) * 3.5;
+    var ic = it.type === 'coin' ? [1.0, 0.84, 0.0] : (it.type === 'gem' ? [0.0, 1.0, 1.0] : [0.0, 1.0, 0.5]);
+    drawMesh3D(it.type === 'gem' ? prismGeos[4] : prismGeos[16], it.x, bob, it.y, Date.now() * 0.004, 16, 7, 16, ic, true);
+  }
+
+   // Детализированные 3D-враги (у каждого типа свой 3D-силуэт, гусеницы и вооружение)
+  for (var k = 0; k < enemies.length; k++) {
+    var en = enemies[k], ecx = en.x + 13, ecy = en.y + 13, rawA = en.angle || 0, eAng = -rawA;
+    var eCos = Math.cos(rawA), eSin = Math.sin(rawA);
+    var isFrz = en.frozen > 0;
+
+    // Тень и гусеницы врага
+    drawMesh3D(boxGeo, ecx + 2, 0.3, ecy + 3, eAng, 30, 0.4, 28, [0.02, 0.02, 0.04], true, 0.45);
+    drawMesh3D(boxGeo, ecx - eSin * 11.5, 4, ecy + eCos * 11.5, eAng, 28, 7, 5.5, [0.1, 0.11, 0.15], false);
+    drawMesh3D(boxGeo, ecx + eSin * 11.5, 4, ecy - eCos * 11.5, eAng, 28, 7, 5.5, [0.1, 0.11, 0.15], false);
+
+    if (en.type === 'sniper') {
+      // Снайпер: бирюзовый корпус, оптический радар и длинный рельсотрон
+      var sc = isFrz ? [0.3, 0.95, 1.0] : [0.0, 0.78, 0.95];
+      drawMesh3D(boxGeo, ecx, 8, ecy, eAng, 28, 9, 20, sc, false);
+      drawMesh3D(prismGeos, ecx - eCos * 4, 15, ecy - eSin * 4, eAng, 14, 6, 14, [0.12, 0.25, 0.35], false);
+      drawMesh3D(boxGeo, ecx + eCos * 17, 14, ecy + eSin * 17, eAng, 26, 3, 3, [0.0, 1.0, 1.0], true);
+    } else if (en.type === 'hunter') {
+      // Фиолетовый Охотник: тяжёлый штурмовой корпус с плазменным ядром и боковыми щитками
+      var hc = isFrz ? [0.3, 0.95, 1.0] : [0.58, 0.18, 0.95];
+      drawMesh3D(boxGeo, ecx, 8.5, ecy, eAng, 28, 10, 22, hc, false);
+      drawMesh3D(boxGeo, ecx - eSin * 13.5, 8.5, ecy + eCos * 13.5, eAng, 20, 6, 2.5, [0.85, 0.4, 1.0], false);
+      drawMesh3D(boxGeo, ecx + eSin * 13.5, 8.5, ecy - eCos * 13.5, eAng, 20, 6, 2.5, [0.85, 0.4, 1.0], false);
+      drawMesh3D(prismGeos, ecx, 16, ecy, Date.now() * 0.005, 12, 6, 12, [1.0, 0.6, 1.0], true);
+    } else if (en.type === 'dasher') {
+      // Жёлтый Таран: клиновидный скоростной корпус с таранным лезвием и форсажем
+      var dc = isFrz ? [0.3, 0.95, 1.0] : [1.0, 0.68, 0.0];
+      drawMesh3D(boxGeo, ecx, 7.5, ecy, eAng, 30, 8, 18, dc, false);
+      drawMesh3D(boxGeo, ecx + eCos * 16, 7.5, ecy + eSin * 16, eAng, 6, 7, 22, [1.0, 0.9, 0.3], false);
+      drawMesh3D(boxGeo, ecx - eCos * 18, 8, ecy - eSin * 18, eAng, 10, 4, 6, [1.0, 0.25, 0.0], true);
+    } else {
+      // Красный стрелок: бронебашня со спаренными пушками
+      var rc = isFrz ? [0.3, 0.95, 1.0] : [0.85, 0.15, 0.18];
+      drawMesh3D(boxGeo, ecx, 8, ecy, eAng, 26, 9.5, 20, rc, false);
+      drawMesh3D(prismGeos, ecx, 15, ecy, eAng, 15, 6, 15, [0.35, 0.1, 0.12], false);
+      drawMesh3D(boxGeo, ecx + eCos * 13 - eSin * 4, 15, ecy + eSin * 13 + eCos * 4, eAng, 14, 3, 3, [1.0, 0.5, 0.5], true);
+      drawMesh3D(boxGeo, ecx + eCos * 13 + eSin * 4, 15, ecy + eSin * 13 - eCos * 4, eAng, 14, 3, 3, [1.0, 0.5, 0.5], true);
+    }
+  }
+
+  // Объёмные 3D-боссы (все грани целые)
+  for (var b = 0; b < bosses.length; b++) {
+    var bs = bosses[b], bcx = bs.x + bs.s * 0.5, bcy = bs.y + bs.s * 0.5;
+    var pGeo = (bs.sides && prismGeos[bs.sides]) ? prismGeos[bs.sides] : prismGeos[16];
+    drawMesh3D(pGeo, bcx, 22, bcy, -(bs.rotAngle || 0), bs.s, 44, bs.s, hexToRGB(bs.color), false);
+    drawMesh3D(pGeo, bcx, 45.5, bcy, (bs.rotAngle || 0), bs.s * 0.55, 4, bs.s * 0.55, [1.0, 1.0, 1.0], true);
+  }
+
+  // Лазеры (Ульта Аннигиляция, Молния и 7 лучей Гептагона)
+  var allBeams = laserBeams.concat(bossLasers);
+  for (var lb = 0; lb < allBeams.length; lb++) {
+    var lObj = allBeams[lb], lx = (lObj.x1 + lObj.x2) * 0.5, lz = (lObj.y1 + lObj.y2) * 0.5;
+    var lLen = Math.hypot(lObj.x2 - lObj.x1, lObj.y2 - lObj.y1), lAng = Math.atan2(lObj.y2 - lObj.y1, lObj.x2 - lObj.x1);
+    var lW = lObj.warnFrames > 0 ? 3 : 12;
+    drawMesh3D(boxGeo, lx, 16, lz, -lAng, lLen, 5, lW, lObj.warnFrames > 0 ? [1.0, 0.2, 0.3] : hexToRGB(lObj.color), true);
+  }
+
+  // Падающие сверху с неба 3D-метеориты 5-го босса
+  for (var bm = 0; bm < bossMeteors.length; bm++) {
+    var mObj = bossMeteors[bm], progM = 1 - (mObj.timer / mObj.maxTimer);
+    drawMesh3D(prismGeos[16], mObj.x, 1, mObj.y, 0, mObj.r * 2 * progM, 2, mObj.r * 2 * progM, [1.0, 0.15, 0.3], true);
+    drawMesh3D(prismGeos[8], mObj.x, 18 + (1 - progM) * 420, mObj.y, progM * 6, 38, 38, 38, [1.0, 0.45, 0.1], true);
+  }
+
+  // Снаряды игрока, пули боссов, огненные/ледяные шары ульты и частицы
+   var curGunLvl = 1 + (upg.damage || 0) + matchBuffs.dmg;
+  for (var pb = 0; pb < pBullets.length; pb++) {
+    var bObj = pBullets[pb], bCos = Math.cos(bObj.angle), bSin = Math.sin(bObj.angle);
+    if (curGunLvl >= 9) {
+      // УР. 9+: БОЕВАЯ 3D-РАКЕТА с боеголовкой, стабилизаторами и огненным соплом!
+      drawMesh3D(boxGeo, bObj.x, 16, bObj.y, -bObj.angle, 20, 5.5, 5.5, [0.85, 0.9, 0.98], false, 1.0, texArmor, 1.0);
+      drawMesh3D(boxGeo, bObj.x + bCos * 12, 16, bObj.y + bSin * 12, -bObj.angle, 7, 4, 4, [1.0, 0.15, 0.3], true);
+      drawMesh3D(boxGeo, bObj.x - bCos * 7, 16, bObj.y - bSin * 7, -bObj.angle, 6, 11, 2, [0.2, 0.8, 1.0], false);
+      drawMesh3D(boxGeo, bObj.x - bCos * 7, 16, bObj.y - bSin * 7, -bObj.angle, 6, 2, 11, [0.2, 0.8, 1.0], false);
+      drawMesh3D(boxGeo, bObj.x - bCos * 14, 16, bObj.y - bSin * 14, -bObj.angle, 9, 4, 4, [1.0, 0.55, 0.0], true);
+    } else if (curGunLvl >= 6) {
+      // УР. 6-8: Плазменный энергозаряд с ярким сердечником и стабилизаторами
+      drawMesh3D(boxGeo, bObj.x, 16, bObj.y, -bObj.angle, 22, 6, 6, [0.0, 0.85, 1.0], true, 0.85);
+      drawMesh3D(boxGeo, bObj.x + bCos * 4, 16, bObj.y + bSin * 4, -bObj.angle, 14, 3, 3, [1.0, 1.0, 1.0], true);
+      drawMesh3D(boxGeo, bObj.x - bCos * 8, 16, bObj.y - bSin * 8, -bObj.angle, 7, 2.5, 9, [0.0, 1.0, 0.8], true);
+    } else if (curGunLvl >= 3) {
+      // УР. 3-5: Неоновый бронебойный снаряд с трассером
+      drawMesh3D(boxGeo, bObj.x, 16, bObj.y, -bObj.angle, 19, 4.8, 4.8, [0.0, 1.0, 0.9], false, 1.0, texArmor, 1.0);
+      drawMesh3D(boxGeo, bObj.x + bCos * 10, 16, bObj.y + bSin * 10, -bObj.angle, 5, 3.5, 3.5, [1.0, 1.0, 1.0], true);
+    } else {
+      // УР. 1-2: Латунный снаряд с медным наконечником
+      drawMesh3D(boxGeo, bObj.x, 16, bObj.y, -bObj.angle, 15, 4.5, 4.5, [1.0, 0.78, 0.15], false, 1.0, texArmor, 1.0);
+      drawMesh3D(boxGeo, bObj.x + bCos * 8, 16, bObj.y + bSin * 8, -bObj.angle, 4, 3.2, 3.2, [1.0, 0.35, 0.1], true);
+    }
+  }
+  for (var eb = 0; eb < eBullets.length; eb++) {
+    var eObj = eBullets[eb]; drawMesh3D(prismGeos[8], eObj.x, 16, eObj.y, Date.now() * 0.01, 14, 10, 14, hexToRGB(eObj.color), true);
+  }
+  for (var fb = 0; fb < fireballs.length; fb++) {
+    var fObj = fireballs[fb]; drawMesh3D(prismGeos[16], fObj.x, 18, fObj.y, Date.now() * 0.01, 28, 22, 28, fObj.kind === 'frost' ? [0.0, 1.0, 1.0] : [1.0, 0.35, 0.0], true);
+  }
+  for (var pt = 0; pt < particles.length; pt++) {
+    var ptObj = particles[pt]; drawMesh3D(boxGeo, ptObj.x, Math.max(2, ptObj.z), ptObj.y, 0, 5, 5, 5, hexToRGB(ptObj.color), true);
+  }
+}
+var autoFireEnabled = true;
+function loop() {
+if (state === 'play') {
+if (hitstopTimer > 0) hitstopTimer--;
+else updatePhysics();
+}
+ctx.clearRect(0, 0, VW, VH);
+if (state === 'play' || state === 'paused' || state === 'lvlup') {
+var focusX = (gameMode === 'coop') ? (p.x + p2.x) * 0.5 : p.x;
+var focusZ = (gameMode === 'coop') ? (p.y + p2.y) * 0.5 : p.y;
+var zoomDist = 660 / camZoom;
+if (gameMode === 'coop') zoomDist += Math.hypot(p.x - p2.x, p.y - p2.y) * 0.55;
+var shX = shakeTime > 0 ? (Math.random() - 0.5) * shakeMag * 2 : 0;
+var shZ = shakeTime > 0 ? (Math.random() - 0.5) * shakeMag * 2 : 0;
+// Камера Brawl Stars 3D: смотрит на танк сверху под углом 56 градусов
+camTarget.x = focusX; camTarget.y = 10; camTarget.z = focusZ;
+camPos.x = focusX + shX;
+camPos.y = zoomDist * 0.86;
+camPos.z = focusZ + zoomDist * 0.55 + shZ;
+    renderWebGL3D();
+
+    // Полоски HP над 3D-врагами и боссами
+    for (var hi = 0; hi < enemies.length; hi++) {
+      var hen = enemies[hi], scr = project3DToScreen(hen.x + 13, 28, hen.y + 13);
+      if (scr && scr.x > -40 && scr.x < VW + 40 && scr.y > 40 && scr.y < VH) {
+        ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fillRect(scr.x - 16, scr.y - 6, 32, 5);
+        ctx.fillStyle = '#00ff88'; ctx.fillRect(scr.x - 15, scr.y - 5, 30 * Math.max(0, hen.hp / hen.maxHp), 3);
+      }
+    }
+    for (var bi6 = 0; bi6 < bosses.length; bi6++) {
+      var hbs = bosses[bi6], bScr = project3DToScreen(hbs.x + hbs.s * 0.5, 54, hbs.y + hbs.s * 0.5);
+      if (bScr) {
+        ctx.fillStyle = 'rgba(0,0,0,0.85)'; ctx.fillRect(bScr.x - 42, bScr.y - 10, 84, 8);
+        ctx.fillStyle = '#ff2244'; ctx.fillRect(bScr.x - 41, bScr.y - 9, 82 * Math.max(0, hbs.hp / hbs.maxHp), 6);
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 11px Segoe UI, Arial'; ctx.textAlign = 'center';
+        ctx.fillText(hbs.name, bScr.x, bScr.y - 14); ctx.textAlign = 'left';
+      }
+    }
+
+    // Всплывающие цифры урона
+    for (var pi = popups.length - 1; pi >= 0; pi--) {
+      var pop = popups[pi];
+      if (state === 'play') { pop.y -= 0.7; pop.life--; }
+      var pScr = project3DToScreen(pop.x, 32, pop.y);
+      if (pScr) {
+        ctx.fillStyle = pop.color; ctx.font = 'bold 13px Segoe UI, Arial'; ctx.textAlign = 'center';
+        ctx.fillText(pop.text, pScr.x, pScr.y); ctx.textAlign = 'left';
+      }
+      if (pop.life <= 0) popups.splice(pi, 1);
+    }
+
+    // Миникарта в правом нижнем углу
+    var mw = 148, mh = Math.round(mw * (MH / MW));
+    if (mh > 125) { mh = 125; mw = Math.round(mh * (MW / MH)); }
+    var mx = VW - mw - 12, my = VH - mh - 12, sx = mw / MW, sy = mh / MH;
+    ctx.fillStyle = 'rgba(10, 12, 20, 0.82)'; ctx.fillRect(mx, my, mw, mh);
+    ctx.strokeStyle = '#404066'; ctx.lineWidth = 1.5; ctx.strokeRect(mx, my, mw, mh);
+    ctx.fillStyle = currentMap.wallTop;
+    for (var wi = 0; wi < currentMap.walls.length; wi++) {
+      var wl = currentMap.walls[wi];
+      ctx.fillRect(mx + wl.x * sx, my + wl.y * sy, Math.max(2, wl.w * sx), Math.max(2, wl.h * sy));
+    }
+    if (gameMode === 'raid' && currentMap.goal) {
+      ctx.fillStyle = '#00ff88'; ctx.beginPath(); ctx.arc(mx + currentMap.goal.x * sx, my + currentMap.goal.y * sy, 4, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = '#ff4444';
+    for (var ei7 = 0; ei7 < enemies.length; ei7++) ctx.fillRect(mx + enemies[ei7].x * sx - 1.5, my + enemies[ei7].y * sy - 1.5, 3, 3);
+    ctx.fillStyle = '#ffaa00';
+    for (var bi7 = 0; bi7 < bosses.length; bi7++) ctx.fillRect(mx + (bosses[bi7].x + bosses[bi7].s * 0.5) * sx - 3.5, my + (bosses[bi7].y + bosses[bi7].s * 0.5) * sy - 3.5, 7, 7);
+    ctx.fillStyle = gameMode === 'coop' ? '#ff2a44' : '#00ffff';
+    ctx.beginPath(); ctx.arc(mx + p.x * sx, my + p.y * sy, 3.5, 0, Math.PI * 2); ctx.fill();
+    if (gameMode === 'coop') {
+      ctx.fillStyle = '#0099ff'; ctx.beginPath(); ctx.arc(mx + p2.x * sx, my + p2.y * sy, 3.5, 0, Math.PI * 2); ctx.fill();
+    }
+
+    if (msgTimer > 0 && state === 'play') {
+ctx.fillStyle = 'rgba(255, 215, 0, ' + Math.min(1, msgTimer / 40) + ')';
+ctx.font = 'bold 22px Segoe UI, Arial'; ctx.textAlign = 'center';
+ctx.fillText(msgText, VW * 0.5, 95); ctx.textAlign = 'left';
+}
+ctx.fillStyle = 'rgba(12, 12, 18, 0.88)'; ctx.fillRect(0, 0, VW, 42);
+ctx.font = 'bold 13px Segoe UI, Arial';
+if (hasHpBar()) {
+ctx.fillStyle = '#331111'; ctx.fillRect(12, 12, 130, 18);
+ctx.fillStyle = p.hp > p.maxHp * 0.3 ? '#00ff88' : '#ff3333'; ctx.fillRect(12, 12, 130 * (p.hp / p.maxHp), 18);
+ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.strokeRect(12, 12, 130, 18);
+ctx.fillStyle = '#fff'; ctx.fillText('HP: ' + p.hp + '/' + p.maxHp, 18, 26);
+} else {
+ctx.fillStyle = '#fff'; ctx.fillText('Очки: ' + score, 12, 27);
+}
+if (gameMode === 'duel' && bosses.length > 0) {
+var db = bosses.find(Boolean);
+ctx.fillStyle = db.color; ctx.fillText(db.name + ': ' + Math.max(0, db.hp) + '/' + db.maxHp, 152, 27);
+} else {
+var lp = getLevelProgress(score);
+ctx.fillStyle = '#ffd700'; ctx.fillText('Ур.' + lp.lvl + ' (' + lp.cur + '/' + lp.need + ')', 152, 23);
+ctx.fillStyle = '#2a2a3d'; ctx.fillRect(152, 28, 92, 5);
+ctx.fillStyle = '#ffd700'; ctx.fillRect(152, 28, 92 * Math.min(1, lp.cur / lp.need), 5);
+}
+    if (combo > 1 && gameMode !== 'duel') {
+      ctx.fillStyle = '#ffd700'; ctx.fillText('x' + combo.toFixed(1), 255, 27);
+    }
+    ctx.fillStyle = p.fbCd <= 0 ? '#ff8800' : '#775544';
+    ctx.fillText(gameMode === 'coop' ? 'КООПЕРАТИВ 3D' : (p.fbCd <= 0 ? 'УЛЬТА: ГОТОВА' : 'УЛЬТА: ' + Math.ceil(p.fbCd / 60) + 'с'), 305, 27);
+    ctx.fillStyle = p.dashCd <= 0 ? '#00ffff' : '#666';
+    ctx.fillText(p.dashCd <= 0 ? 'РЫВОК: ГОТОВ' : 'РЫВОК: ' + (p.dashCd / 60).toFixed(1) + 'с', 428, 27);
+    ctx.fillStyle = '#fff'; ctx.fillText(Math.floor(time / 60) + ':' + ('0' + (time % 60)).slice(-2), 542, 27);
+    if (p.shield > 0) {
+      ctx.fillStyle = '#00ff88'; ctx.fillText('ЩИТ: ' + (p.shield / 60).toFixed(1) + 'с', 595, 27);
+    } else if ((upg.autoFire || 0) > 0 && gameMode !== 'coop') {
+      ctx.fillStyle = autoFireEnabled ? '#00e5ff' : '#777';
+      ctx.fillText(autoFireEnabled ? 'АВТО[R]: ВКЛ' : 'АВТО[R]: ВЫКЛ', 595, 27);
+    }
+if (flashAlpha > 0) {
+ctx.fillStyle = 'rgba(255, 255, 255, ' + flashAlpha + ')';
+ctx.fillRect(0, 0, VW, VH); flashAlpha = Math.max(0, flashAlpha - 0.04);
+}
+}
+requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>
